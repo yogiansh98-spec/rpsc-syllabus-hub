@@ -1,3 +1,14 @@
+# V0.5.1 ADDENDUM — ONLINE UPDATES & UPCOMING PREVIEWS (2026-11-04)
+
+- Configured production-test APKs with public read-only GitHub raw catalog URL `https://raw.githubusercontent.com/yogiansh98-spec/rpsc-syllabus-hub/main/catalog/catalog.json`.
+- Refresh validated JSON on Android activity resume, storing last-good catalog and loading it offline. **One new APK installation is required** to gain this capability; later content-only changes need no APK rebuild.
+- Home / All, with no active search, shows two small non-interactive preview tiles **below the exam list**: `Previous Year Papers — Coming Soon` and `Exam Study Plan — Coming Soon`.
+- These are previews only: **no papers, study-plan content, or empty feature navigation shipped**. This is the user's explicit exception to the V1 feature boundary below.
+- Bottom navigation stays Home / Saved / Downloads. Syllabus catalog still must pass all independent PDF verification/publication gates; candidate links do not become student-facing by enabling sync.
+- GitHub Actions debug APK and release build need fresh compile verification; on-phone testing separately required.
+
+---
+
 # V1.7 ADDENDUM — COMPACT CATEGORY UX (2026-11-04)
 
 **Current Android source:** `RPSC_Syllabus_Hub_Android_App_v0_3.zip`. The v0.2 file remains historical.

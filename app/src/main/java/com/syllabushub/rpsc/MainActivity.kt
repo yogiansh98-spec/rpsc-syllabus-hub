@@ -268,11 +268,22 @@ private fun openDownloadedPdf(context: Context, uri: Uri) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 class MainActivity : ComponentActivity() {
+    private lateinit var catalogStore: CatalogStore
+    private var onCatalogUpdated: ((List<Exam>) -> Unit)? = null
+
+    override fun onResume() {
+        super.onResume()
+        // Refresh whenever the user returns to the app, not only on process restart.
+        if (::catalogStore.isInitialized) {
+            catalogStore.refresh { latest -> onCatalogUpdated?.invoke(latest) }
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val store = CatalogStore(this)
+        catalogStore = CatalogStore(this)
         setContent {
-            var exams by remember { mutableStateOf(runCatching { store.load() }.getOrDefault(emptyList())) }
+            var exams by remember { mutableStateOf(runCatching { catalogStore.load() }.getOrDefault(emptyList())) }
             var bookmarks by remember { mutableStateOf(getBookmarks(this)) }
             var downloads by remember { mutableStateOf(getDownloads(this)) }
             var screen by rememberSaveable { mutableStateOf("home") }
@@ -281,7 +292,10 @@ class MainActivity : ComponentActivity() {
             var category by rememberSaveable { mutableStateOf("all") }
             var downloadRefresh by remember { mutableIntStateOf(0) }
 
-            LaunchedEffect(Unit) { store.refresh { newExams -> exams = newExams } }
+            DisposableEffect(Unit) {
+                onCatalogUpdated = { latest -> exams = latest }
+                onDispose { onCatalogUpdated = null }
+            }
             BackHandler(enabled = screen == "detail" || screen == "about" || (screen == "home" && category !in listOf("all", "teaching", "administrative"))) {
                 when {
                     screen == "detail" || screen == "about" -> screen = "home"
@@ -627,7 +641,77 @@ private fun HomeScreen(
                         }
                     }
                 }
+                // Informational previews only. These features do not open empty screens.
+                if (category == "all" && q.isBlank()) {
+                    item(key = "coming_soon_features") {
+                        Column(
+                            modifier = Modifier.padding(top = 22.dp, bottom = 10.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            Text(
+                                "Explore more",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                UpcomingFeatureCard(
+                                    "Previous Year Papers",
+                                    Icons.Filled.Description,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                UpcomingFeatureCard(
+                                    "Exam Study Plan",
+                                    Icons.Filled.DateRange,
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
+                        }
+                    }
+                }
             }
+        }
+    }
+}
+
+@Composable
+private fun UpcomingFeatureCard(
+    title: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.surface,
+        border = androidx.compose.foundation.BorderStroke(
+            1.dp, MaterialTheme.colorScheme.outlineVariant
+        )
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth().height(124.dp).padding(12.dp),
+            verticalArrangement = Arrangement.SpaceBetween
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(23.dp)
+            )
+            Text(
+                title,
+                style = MaterialTheme.typography.bodySmall,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                "Coming Soon",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }
