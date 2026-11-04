@@ -322,7 +322,7 @@ class MainActivity : ComponentActivity() {
                             },
                             actions = {
                                 IconButton(onClick = { screen = "about" }) {
-                                    Icon(Icons.Filled.InfoOutline, contentDescription = "About this independent app")
+                                    Icon(Icons.Filled.Info, contentDescription = "About this independent app")
                                 }
                             }
                         )
