@@ -12,6 +12,8 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -28,6 +30,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
@@ -279,36 +282,59 @@ class MainActivity : ComponentActivity() {
             var downloadRefresh by remember { mutableIntStateOf(0) }
 
             LaunchedEffect(Unit) { store.refresh { newExams -> exams = newExams } }
-            BackHandler(enabled = screen == "detail") { screen = "home" }
+            BackHandler(enabled = screen == "detail" || screen == "about" || (screen == "home" && category !in listOf("all", "teaching", "administrative"))) {
+                when {
+                    screen == "detail" || screen == "about" -> screen = "home"
+                    category == "more" -> category = "all"
+                    else -> category = "more"
+                }
+            }
 
             MaterialTheme(colorScheme = lightColorScheme(
-                primary = Color(0xFF225C51),
-                secondary = Color(0xFF54645F),
-                background = Color(0xFFFAFBF9),
-                surface = Color.White
+                primary = Color(0xFF21645A),
+                onPrimary = Color.White,
+                primaryContainer = Color(0xFFDDEEE9),
+                onPrimaryContainer = Color(0xFF173B35),
+                secondary = Color(0xFF566B66),
+                onSecondary = Color.White,
+                background = Color(0xFFF8FAF9),
+                onBackground = Color(0xFF202A28),
+                surface = Color.White,
+                onSurface = Color(0xFF202A28),
+                surfaceVariant = Color(0xFFF0F5F2),
+                onSurfaceVariant = Color(0xFF596D67),
+                outline = Color(0xFFC2D1CB),
+                outlineVariant = Color(0xFFE4EBE8)
             )) {
                 Scaffold(
+                    containerColor = MaterialTheme.colorScheme.background,
                     topBar = {
-                        TopAppBar(title = {
-                            Column {
-                                Text("Syllabus Hub", fontWeight = FontWeight.SemiBold)
-                                Text("Independent syllabus reference", style = MaterialTheme.typography.labelSmall)
+                        TopAppBar(
+                            colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface),
+                            title = {
+                                Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
+                                    Text("Syllabus Hub", style = MaterialTheme.typography.titleLarge,
+                                        fontWeight = FontWeight.Bold)
+                                    Text("Unofficial RPSC syllabus directory",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                            },
+                            actions = {
+                                IconButton(onClick = { screen = "about" }) {
+                                    Icon(Icons.Filled.InfoOutline, contentDescription = "About this independent app")
+                                }
                             }
-                        })
+                        )
                     },
                     bottomBar = {
-                        NavigationBar {
-                            listOf(Triple("home", "Home", Icons.Filled.Home),
-                                Triple("bookmarks", "Saved", Icons.Filled.Bookmark),
-                                Triple("downloads", "Downloads", Icons.Filled.Download)).forEach { tab ->
-                                NavigationBarItem(
-                                    selected = screen == tab.first || (screen == "detail" && tab.first == "home"),
-                                    onClick = { screen = tab.first; if (tab.first == "downloads") downloadRefresh++ },
-                                    label = { Text(tab.second) },
-                                    icon = { Icon(tab.third, contentDescription = tab.second) }
-                                )
+                        CompactBottomBar(
+                            selected = if (screen == "detail" || screen == "about") "home" else screen,
+                            onSelect = { tab ->
+                                screen = tab
+                                if (tab == "downloads") downloadRefresh++
                             }
-                        }
+                        )
                     }
                 ) { padding ->
                     Column(Modifier.padding(padding).fillMaxSize()) {
@@ -346,6 +372,9 @@ class MainActivity : ComponentActivity() {
                                     )
                                 }
                             }
+                            "about" -> AboutScreen(onOpenOfficial = {
+                                openOfficialPdf(this@MainActivity, "https://rpsc.rajasthan.gov.in/syllabus")
+                            })
                             "bookmarks" -> SavedScreen(exams.filter { it.id in bookmarks }) {
                                 selectedExam = it; screen = "detail"
                             }
@@ -384,119 +413,237 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
+private fun CompactBottomBar(selected: String, onSelect: (String) -> Unit) {
+    Surface(color = MaterialTheme.colorScheme.surface, shadowElevation = 4.dp) {
+        Row(
+            modifier = Modifier.fillMaxWidth().windowInsetsPadding(WindowInsets.navigationBars)
+                .height(60.dp).padding(horizontal = 10.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            listOf(
+                Triple("home", "Home", Icons.Filled.Home),
+                Triple("bookmarks", "Saved", Icons.Filled.BookmarkBorder),
+                Triple("downloads", "Downloads", Icons.Filled.FileDownload)
+            ).forEach { tab ->
+                val active = selected == tab.first
+                Column(
+                    modifier = Modifier.weight(1f).fillMaxHeight()
+                        .clickable { onSelect(tab.first) }
+                        .padding(top = 6.dp, bottom = 4.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Icon(
+                        tab.third, contentDescription = tab.second,
+                        tint = if (active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(21.dp)
+                    )
+                    Spacer(Modifier.height(3.dp))
+                    Text(
+                        tab.second, style = MaterialTheme.typography.labelSmall,
+                        fontWeight = if (active) FontWeight.SemiBold else FontWeight.Normal,
+                        color = if (active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
 private fun HomeScreen(
     exams: List<Exam>, query: String, onQuery: (String) -> Unit,
     category: String, onCategory: (String) -> Unit,
     onSelect: (String) -> Unit, bookmarks: Set<String>
 ) {
     val quickTabs = listOf("all" to "All", "teaching" to "Teaching", "administrative" to "RAS", "more" to "More")
-    val chosenQuickTab = if (category in listOf("all", "teaching", "administrative")) category else "more"
+    val selectedTab = if (category in listOf("all", "teaching", "administrative")) category else "more"
+    val q = query.trim().lowercase()
     val visible = remember(exams, query, category) {
-        val q = query.trim().lowercase()
         exams.filter { exam ->
-            val categoryOk = category == "all" || category == "more" || normalizedCategory(exam) == category
+            val categoryMatch = category == "all" || category == "more" ||
+                normalizedCategory(exam) == category
             val terms = listOf(exam.nameHi, exam.nameEn, categoryTitle(normalizedCategory(exam))) + exam.keywords
-            categoryOk && (q.isEmpty() || terms.any { it.lowercase().contains(q) })
+            categoryMatch && (q.isBlank() || terms.any { it.lowercase().contains(q) })
         }
     }
     val grouped = remember(visible) { visible.groupBy { normalizedCategory(it) } }
     val moreCategories = remember(exams) {
         examCategories.filter { cat ->
-            cat.id !in listOf("teaching", "administrative") && exams.any { normalizedCategory(it) == cat.id }
+            cat.id !in listOf("teaching", "administrative") &&
+                exams.any { normalizedCategory(it) == cat.id }
         }
     }
+
     Column(Modifier.fillMaxSize()) {
-        OutlinedTextField(
-            value = query, onValueChange = onQuery,
-            placeholder = { Text("Search exams, posts, subjects...") },
-            leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
-            singleLine = true,
-            shape = RoundedCornerShape(12.dp),
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
-        )
-        Spacer(Modifier.height(8.dp))
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        Surface(
+            color = MaterialTheme.colorScheme.surface,
+            modifier = Modifier.fillMaxWidth()
         ) {
-            quickTabs.forEach { (id, label) ->
-                val selected = chosenQuickTab == id
-                if (selected) {
-                    Button(
-                        onClick = { onCategory(id) }, modifier = Modifier.weight(1f).height(36.dp),
-                        shape = RoundedCornerShape(10.dp), contentPadding = PaddingValues(0.dp)
-                    ) { Text(label, style = MaterialTheme.typography.labelMedium, maxLines = 1) }
-                } else {
-                    OutlinedButton(
-                        onClick = { onCategory(id) }, modifier = Modifier.weight(1f).height(36.dp),
-                        shape = RoundedCornerShape(10.dp), contentPadding = PaddingValues(0.dp)
-                    ) { Text(label, style = MaterialTheme.typography.labelMedium, maxLines = 1) }
+            Column(Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant,
+                    modifier = Modifier.fillMaxWidth().height(48.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxSize().padding(horizontal = 13.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(Icons.Filled.Search, contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
+                        Spacer(Modifier.width(10.dp))
+                        Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
+                            if (query.isEmpty()) {
+                                Text("Search exams, posts, subjects",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            }
+                            BasicTextField(
+                                value = query, onValueChange = onQuery,
+                                singleLine = true, cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                                textStyle = MaterialTheme.typography.bodyMedium.copy(
+                                    color = MaterialTheme.colorScheme.onSurface
+                                ),
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                        if (query.isNotEmpty()) {
+                            IconButton(onClick = { onQuery("") }, modifier = Modifier.size(36.dp)) {
+                                Icon(Icons.Filled.Close, contentDescription = "Clear search",
+                                    modifier = Modifier.size(18.dp),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
+                    }
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(7.dp), modifier = Modifier.fillMaxWidth()) {
+                    quickTabs.forEach { (id, label) ->
+                        val active = selectedTab == id
+                        Surface(
+                            onClick = { onCategory(id) },
+                            shape = RoundedCornerShape(20.dp),
+                            color = if (active) MaterialTheme.colorScheme.primary
+                                else MaterialTheme.colorScheme.surface,
+                            border = if (active) null else androidx.compose.foundation.BorderStroke(
+                                1.dp, MaterialTheme.colorScheme.outlineVariant
+                            ),
+                            modifier = Modifier.weight(1f).height(36.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Text(label, style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = if (active) FontWeight.SemiBold else FontWeight.Medium,
+                                    color = if (active) MaterialTheme.colorScheme.onPrimary
+                                        else MaterialTheme.colorScheme.onSurface,
+                                    maxLines = 1)
+                            }
+                        }
+                    }
                 }
             }
         }
-        Spacer(Modifier.height(8.dp))
         LazyColumn(
-            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 20.dp),
-            verticalArrangement = Arrangement.spacedBy(7.dp)
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 14.dp),
+            verticalArrangement = Arrangement.spacedBy(3.dp)
         ) {
             if (category == "more") {
                 item {
-                    Text("More categories", style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(vertical = 4.dp))
+                    Text("Categories", fontWeight = FontWeight.SemiBold,
+                        style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.padding(bottom = 3.dp))
+                    Text("Choose a category to view its exams",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(bottom = 10.dp))
                 }
                 if (moreCategories.isEmpty()) {
-                    item { Text("नई परीक्षाएँ जुड़ने पर दूसरी Categories यहाँ दिखेंगी।", style = MaterialTheme.typography.bodySmall) }
-                }
-                items(moreCategories, key = { "category_${it.id}" }) { cat ->
-                    val count = exams.count { normalizedCategory(it) == cat.id }
-                    Surface(
-                        onClick = { onCategory(cat.id) }, shape = RoundedCornerShape(10.dp),
-                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
-                    ) {
-                        Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 11.dp),
-                            verticalAlignment = Alignment.CenterVertically) {
-                            Text(cat.title, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
-                            Text("$count", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
-                            Spacer(Modifier.width(6.dp))
-                            Icon(Icons.Filled.ChevronRight, contentDescription = null, modifier = Modifier.size(18.dp))
+                    item { CompactEmptyState("No additional categories yet", "New categories appear as exams are added.") }
+                } else {
+                    items(moreCategories, key = { "cat_${it.id}" }) { cat ->
+                        val count = exams.count { normalizedCategory(it) == cat.id }
+                        Surface(onClick = { onCategory(cat.id) },
+                            color = MaterialTheme.colorScheme.surface,
+                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier.fillMaxWidth()) {
+                            Row(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 14.dp),
+                                verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Filled.FolderOpen, contentDescription = null,
+                                    modifier = Modifier.size(19.dp),
+                                    tint = MaterialTheme.colorScheme.primary)
+                                Spacer(Modifier.width(12.dp))
+                                Text(cat.title, modifier = Modifier.weight(1f),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Medium)
+                                Text("$count", style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Spacer(Modifier.width(7.dp))
+                                Icon(Icons.Filled.ChevronRight, contentDescription = null,
+                                    modifier = Modifier.size(18.dp))
+                            }
                         }
                     }
                 }
             } else {
                 if (category !in listOf("all", "teaching", "administrative")) {
                     item {
-                        TextButton(onClick = { onCategory("more") }, contentPadding = PaddingValues(0.dp)) {
-                            Icon(Icons.Filled.ArrowBack, contentDescription = null, modifier = Modifier.size(16.dp))
-                            Spacer(Modifier.width(5.dp))
-                            Text("Categories", style = MaterialTheme.typography.labelMedium)
+                        TextButton(onClick = { onCategory("more") },
+                            contentPadding = PaddingValues(horizontal = 0.dp, vertical = 0.dp)) {
+                            Icon(Icons.Filled.ArrowBack, contentDescription = null,
+                                modifier = Modifier.size(17.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text("All categories", style = MaterialTheme.typography.labelMedium)
                         }
                     }
                 }
                 if (visible.isEmpty()) {
-                    item { Text("कोई परीक्षा नहीं मिली। दूसरा नाम आज़माएँ।", modifier = Modifier.padding(vertical = 18.dp)) }
+                    item {
+                        CompactEmptyState("No matching exams", "Try a different exam name, subject or spelling.")
+                    }
                 }
                 examCategories.forEach { cat ->
                     val section = grouped[cat.id].orEmpty()
                     if (section.isNotEmpty()) {
                         item(key = "heading_${cat.id}") {
                             Row(
-                                modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 2.dp),
+                                modifier = Modifier.fillMaxWidth()
+                                    .padding(top = 14.dp, bottom = 7.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(cat.title, modifier = Modifier.weight(1f),
-                                    style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
-                                Text("${section.size} exams", style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.secondary)
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.SemiBold)
+                                Text("${section.size} exams",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         }
                         items(section, key = { it.id }) { exam ->
-                            ExamListRow(exam = exam, bookmarked = exam.id in bookmarks, onClick = { onSelect(exam.id) })
+                            ExamListRow(
+                                exam = exam, bookmarked = exam.id in bookmarks,
+                                onClick = { onSelect(exam.id) }
+                            )
                         }
                     }
                 }
             }
-            item { IndependenceNotice() }
         }
+    }
+}
+
+@Composable
+private fun CompactEmptyState(title: String, description: String) {
+    Column(
+        Modifier.fillMaxWidth().padding(vertical = 28.dp, horizontal = 12.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(5.dp)
+    ) {
+        Icon(Icons.Filled.SearchOff, contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(title, fontWeight = FontWeight.SemiBold)
+        Text(description, style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
@@ -504,32 +651,61 @@ private fun HomeScreen(
 private fun ExamListRow(exam: Exam, bookmarked: Boolean, onClick: () -> Unit) {
     Surface(
         onClick = onClick,
+        color = MaterialTheme.colorScheme.surface,
         shape = RoundedCornerShape(10.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
+        modifier = Modifier.fillMaxWidth()
     ) {
         Row(
-            Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(Icons.Filled.MenuBook, contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(19.dp))
+            Surface(shape = RoundedCornerShape(8.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant,
+                modifier = Modifier.size(35.dp)) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(Icons.Filled.MenuBook, contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+                }
+            }
             Spacer(Modifier.width(10.dp))
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(exam.nameHi, fontWeight = FontWeight.Medium,
-                    style = MaterialTheme.typography.bodyMedium, maxLines = 1,
+                Text(exam.nameHi, style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold, maxLines = 1,
                     overflow = TextOverflow.Ellipsis)
-                Text(
-                    if (exam.status == "planned") "Syllabus जल्द जोड़ा जाएगा" else "${exam.documents.size} verified PDF",
-                    color = MaterialTheme.colorScheme.secondary,
-                    style = MaterialTheme.typography.labelSmall, maxLines = 1
-                )
+                Text(exam.nameEn, style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             if (bookmarked) {
-                Icon(Icons.Filled.Bookmark, contentDescription = "Bookmarked",
-                    tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(17.dp))
-                Spacer(Modifier.width(6.dp))
+                Icon(Icons.Filled.Bookmark, contentDescription = "Saved exam",
+                    tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
             }
-            Icon(Icons.Filled.ChevronRight, contentDescription = "Open exam", modifier = Modifier.size(18.dp))
+            Icon(Icons.Filled.ChevronRight, contentDescription = "Open exam",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
+        }
+    }
+}
+
+@Composable
+private fun AboutScreen(onOpenOfficial: () -> Unit) {
+    Column(
+        modifier = Modifier.fillMaxSize().padding(20.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp)
+    ) {
+        Text("About Syllabus Hub", style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold)
+        Text("Independent educational reference app",
+            style = MaterialTheme.typography.titleMedium)
+        Text("यह स्वतंत्र शैक्षणिक ऐप है। इसका RPSC या राजस्थान सरकार से कोई आधिकारिक संबंध नहीं है।",
+            style = MaterialTheme.typography.bodyMedium)
+        Text("Syllabus केवल आधिकारिक RPSC PDF से सत्यापित होने के बाद जोड़ा जाएगा।",
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            style = MaterialTheme.typography.bodyMedium)
+        OutlinedButton(onClick = onOpenOfficial) {
+            Icon(Icons.Filled.OpenInNew, contentDescription = null,
+                modifier = Modifier.size(16.dp))
+            Spacer(Modifier.width(8.dp))
+            Text("Open official RPSC syllabus website")
         }
     }
 }
