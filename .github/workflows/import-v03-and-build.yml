@@ -63,7 +63,7 @@ jobs:
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add .gitignore README.md build.gradle.kts settings.gradle.kts gradle.properties app catalog docs scripts .github/workflows/build-apk.yml .github/workflows/catalog-check.yml
+          git add .gitignore README.md build.gradle.kts settings.gradle.kts gradle.properties app catalog docs scripts
           if ! git diff --cached --quiet; then
             git commit -m "Import verified v0.3 Android source from uploaded ZIP"
             git push origin HEAD:main
