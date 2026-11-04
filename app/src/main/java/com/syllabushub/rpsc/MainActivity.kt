@@ -389,6 +389,7 @@ class MainActivity : ComponentActivity() {
                             "about" -> AboutScreen(onOpenOfficial = {
                                 openOfficialPdf(this@MainActivity, "https://rpsc.rajasthan.gov.in/syllabus")
                             })
+                            "explore" -> ExploreScreen()
                             "bookmarks" -> SavedScreen(exams.filter { it.id in bookmarks }) {
                                 selectedExam = it; screen = "detail"
                             }
@@ -437,7 +438,8 @@ private fun CompactBottomBar(selected: String, onSelect: (String) -> Unit) {
             listOf(
                 Triple("home", "Home", Icons.Filled.Home),
                 Triple("bookmarks", "Saved", Icons.Filled.BookmarkBorder),
-                Triple("downloads", "Downloads", Icons.Filled.FileDownload)
+                Triple("downloads", "Downloads", Icons.Filled.FileDownload),
+                Triple("explore", "Explore", Icons.Filled.Explore)
             ).forEach { tab ->
                 val active = selected == tab.first
                 Column(
@@ -641,37 +643,25 @@ private fun HomeScreen(
                         }
                     }
                 }
-                // Informational previews only. These features do not open empty screens.
-                if (category == "all" && q.isBlank()) {
-                    item(key = "coming_soon_features") {
-                        Column(
-                            modifier = Modifier.padding(top = 22.dp, bottom = 10.dp),
-                            verticalArrangement = Arrangement.spacedBy(10.dp)
-                        ) {
-                            Text(
-                                "Explore more",
-                                style = MaterialTheme.typography.titleSmall,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(10.dp)
-                            ) {
-                                UpcomingFeatureCard(
-                                    "Previous Year Papers",
-                                    Icons.Filled.Description,
-                                    modifier = Modifier.weight(1f)
-                                )
-                                UpcomingFeatureCard(
-                                    "Exam Study Plan",
-                                    Icons.Filled.DateRange,
-                                    modifier = Modifier.weight(1f)
-                                )
-                            }
-                        }
-                    }
-                }
+
             }
+        }
+    }
+}
+
+@Composable
+private fun ExploreScreen() {
+    Column(
+        modifier = Modifier.fillMaxSize().padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Text("Explore", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+        Text("More exam resources are on the way",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+            UpcomingFeatureCard("Previous Year Papers", Icons.Filled.Description, Modifier.weight(1f))
+            UpcomingFeatureCard("Exam Study Plan", Icons.Filled.DateRange, Modifier.weight(1f))
         }
     }
 }

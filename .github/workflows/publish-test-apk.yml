@@ -43,9 +43,9 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "v0.5.1-previews-test" \
-            "app/build/outputs/apk/debug/app-debug.apk#RPSC-Syllabus-Hub-v0.5.1.apk" \
+          gh release create "v0.5.2-explore-test" \
+            "app/build/outputs/apk/debug/app-debug.apk#RPSC-Syllabus-Hub-v0.5.2.apk" \
             --target "$GITHUB_SHA" \
-            --title "Syllabus Hub v0.5.1 - Online Updates & Feature Previews" \
+            --title "Syllabus Hub v0.5.2 - Explore Bottom Tab" \
             --prerelease \
-            --notes "Testing build, not a Play Store or government release. The app is not affiliated with RPSC. Online catalog refresh on app resume; Previous Year Papers and Exam Study Plan are visible as Coming Soon. Official syllabus PDFs are not yet populated."
+            --notes "Testing build, not a Play Store or government release. The app is not affiliated with RPSC. Online catalog refresh on app resume; Previous Year Papers and Exam Study Plan are Coming Soon in the Explore bottom tab. Official syllabus PDFs are not yet populated."
