@@ -1,8 +1,8 @@
 {
   "schema_version": 2,
-  "catalog_version": 3,
+  "catalog_version": 4,
   "published_at": "2026-11-04T00:00:00Z",
-  "catalog_note": "APP SHELL TEST v0.3: 10-category taxonomy; 5 exam placeholders; ZERO unverified PDFs.",
+  "catalog_note": "Senior Teacher (Secondary Education) 2025: 3 official PDF headers checked (GK, Hindi, Social Science); remaining 8 pending verification. No claim of full subject coverage.",
   "exams": [
     {
       "id": "ras",
@@ -39,7 +39,7 @@
       "name_hi": "वरिष्ठ अध्यापक (2nd Grade)",
       "name_en": "Senior Teacher / 2nd Grade",
       "category": "teaching",
-      "status": "planned",
+      "status": "published",
       "aliases_hi": [
         "द्वितीय श्रेणी शिक्षक",
         "सेकंड ग्रेड",
@@ -70,7 +70,41 @@
         "Sindhi",
         "Gujarati"
       ],
-      "documents": []
+      "documents": [
+        {
+          "id": "senior-teacher-2025-paper1-gk",
+          "stage": "Written",
+          "paper": "Paper I",
+          "subject": "General Knowledge",
+          "edition_label": "Sr. Teacher (Sec. Edu.) Comp. Exam - 2025 • 25 Sep 2025",
+          "official_url": "https://rpsc.rajasthan.gov.in/Static/Syllabus/0146A331-A4EE-4F82-A9EF-5A7A7CF7760A.pdf",
+          "edition_status": "current_verified",
+          "verified_at": "2026-11-04",
+          "notes": "Senior Teacher Secondary Education 2025; official RPSC PDF. Other subjects pending PDF verification."
+        },
+        {
+          "id": "senior-teacher-2025-paper2-hindi",
+          "stage": "Written",
+          "paper": "Paper II",
+          "subject": "Hindi",
+          "edition_label": "Sr. Teacher (Sec. Edu.) Comp. Exam - 2025 • 25 Sep 2025",
+          "official_url": "https://rpsc.rajasthan.gov.in/Static/Syllabus/345FC0C2-BA97-454A-BDA7-6C5C4CAF0D11.pdf",
+          "edition_status": "current_verified",
+          "verified_at": "2026-11-04",
+          "notes": "Senior Teacher Secondary Education 2025; official RPSC PDF. Other subjects pending PDF verification."
+        },
+        {
+          "id": "senior-teacher-2025-paper2-social-science",
+          "stage": "Written",
+          "paper": "Paper II",
+          "subject": "Social Science",
+          "edition_label": "Sr. Teacher (Sec. Edu.) Comp. Exam - 2025 • 25 Sep 2025",
+          "official_url": "https://rpsc.rajasthan.gov.in/Static/Syllabus/911C23F4-3655-4F34-976B-8046CFAEBB1F.pdf",
+          "edition_status": "current_verified",
+          "verified_at": "2026-11-04",
+          "notes": "Senior Teacher Secondary Education 2025; official RPSC PDF. Other subjects pending PDF verification."
+        }
+      ]
     },
     {
       "id": "school-lecturer",
