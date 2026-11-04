@@ -10,8 +10,8 @@ android {
         applicationId = "com.syllabushub.rpsc"
         minSdk = 24
         targetSdk = 36
-        versionCode = 1
-        versionName = "0.3.0-shell"
+        versionCode = 2
+        versionName = "0.4.0-ui"
         // Supply -PcatalogUrl=https://.../catalog.json after verified catalog is hosted.
         val catalogUrl = providers.gradleProperty("catalogUrl").orElse("").get()
         require(catalogUrl.isEmpty() || catalogUrl.startsWith("https://")) { "HTTPS catalog URL required" }
