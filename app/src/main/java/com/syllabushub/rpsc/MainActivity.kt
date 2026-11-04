@@ -387,7 +387,7 @@ class MainActivity : ComponentActivity() {
                                 }
                             }
                             "about" -> AboutScreen(onOpenOfficial = {
-                                openOfficialPdf(this@MainActivity, "https://rpsc.rajasthan.gov.in/syllabus")
+                                openOfficialPdf(this@MainActivity, "https://rpsc.rajasthan.gov.in/")
                             })
                             "explore" -> ExploreScreen()
                             "bookmarks" -> SavedScreen(exams.filter { it.id in bookmarks }) {
@@ -779,7 +779,7 @@ private fun AboutScreen(onOpenOfficial: () -> Unit) {
             Icon(Icons.Filled.OpenInNew, contentDescription = null,
                 modifier = Modifier.size(16.dp))
             Spacer(Modifier.width(8.dp))
-            Text("Open official RPSC syllabus website")
+            Text("Open official RPSC website")
         }
     }
 }
