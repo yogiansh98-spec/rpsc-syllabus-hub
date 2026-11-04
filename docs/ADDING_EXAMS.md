@@ -39,3 +39,11 @@ python3 scripts/check_links.py  # Network required; manual review if warnings
 ```
 
 App downloads official documents directly to the user's device. It does not host/republish RPSC PDF content.
+
+## v0.6: add new primary categories without rebuilding APK
+- Edit `catalog/catalog.json` and `app/src/main/assets/catalog.json` together (the latter is for future offline installs).
+- Add one `exam_categories` object with unique lowercase-hyphen `id` (2-40 chars) and nonblank `title` (max 70 chars). Up to 60 categories; reserve `all` and `more`. Keep the `other` fallback.
+- Set each new exam's `category` to that exact ID. New categories with exams appear under **More** on the Home screen, and All gets a section; unused categories remain hidden.
+- Increment `catalog_version`, update `published_at`, validate using `python3 scripts/test_catalog.py`, then publish JSON to GitHub main. The v0.6+ app pulls it at resume without a new APK.
+- Do not change Kotlin code just to add a category. Do not add a category only to `explore_categories`, which controls a different UI tab.
+- Older v0.5.3 clients do not understand categories outside the legacy 10; upgrade once to v0.6.

@@ -43,9 +43,9 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "v0.5.3-dynamic-explore-test" \
-            "app/build/outputs/apk/debug/app-debug.apk#RPSC-Syllabus-Hub-v0.5.3.apk" \
+          gh release create "v0.6.0-dynamic-exam-categories-test" \
+            "app/build/outputs/apk/debug/app-debug.apk#RPSC-Syllabus-Hub-v0.6.0.apk" \
             --target "$GITHUB_SHA" \
-            --title "Syllabus Hub v0.5.3 - Dynamic Explore Categories" \
+            --title "Syllabus Hub v0.6.0 - Online Exam Categories" \
             --prerelease \
-            --notes "Testing build, not a Play Store or government release. The app is not affiliated with RPSC. Online catalog refresh on app resume; Explore categories can be updated via online catalog JSON; current entries are Coming Soon. Official syllabus PDFs are not yet populated."
+            --notes "Testing build, not a Play Store or government release. The app is not affiliated with RPSC. Online exam_categories and Explore categories refresh from validated JSON. New exam categories and exams can be added without another APK. Three verified official Senior Teacher 2025 PDFs are available; remaining subjects pending verification. Translated Hindi PDFs are not yet enabled."

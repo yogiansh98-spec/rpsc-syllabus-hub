@@ -41,3 +41,10 @@ Or push source to **a new GitHub repository**, open Actions, and run **Build And
 - Configure GitHub Actions repository variable `CATALOG_URL` when static hosting is ready, then rebuild the APK once. Future catalog changes require no APK update.
 
 This is independent educational software, not affiliated with RPSC or the Government of Rajasthan. It is not yet ready for public Play Store release.
+
+## v0.6 online exam categories (2026-11-04)
+- `exam_categories` in the remote catalog defines Home's category taxonomy (not just Explore cards). New IDs are no longer hardcoded in Kotlin.
+- Quick tabs stay All, Teaching, RAS, More; all other nonempty categories appear in More automatically.
+- Catalog updates are parsed atomically: exams, category labels and Explore cards must all validate before the cache is replaced.
+- Legacy cached catalogs without `exam_categories` use the bundled 10 categories for backward compatibility.
+- For dynamic categories, use the v0.6 or newer APK. This release does not add translated PDFs.

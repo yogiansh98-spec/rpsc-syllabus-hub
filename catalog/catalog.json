@@ -1,8 +1,8 @@
 {
   "schema_version": 2,
-  "catalog_version": 4,
-  "published_at": "2026-11-04T00:00:00Z",
-  "catalog_note": "Senior Teacher (Secondary Education) 2025: 3 official PDF headers checked (GK, Hindi, Social Science); remaining 8 pending verification. No claim of full subject coverage.",
+  "catalog_version": 5,
+  "published_at": "2026-11-04T09:30:00Z",
+  "catalog_note": "Dynamic exam categories from online JSON; 3 verified Senior Teacher syllabus PDFs currently available, 8 subjects pending audit.",
   "exams": [
     {
       "id": "ras",
@@ -207,6 +207,48 @@
       "id": "exam-study-plan",
       "title": "Exam Study Plan",
       "status": "coming_soon"
+    }
+  ],
+  "exam_categories": [
+    {
+      "id": "teaching",
+      "title": "Teaching & Education"
+    },
+    {
+      "id": "administrative",
+      "title": "RAS & Administration"
+    },
+    {
+      "id": "police",
+      "title": "Police & Security"
+    },
+    {
+      "id": "engineering",
+      "title": "Engineering & Technical"
+    },
+    {
+      "id": "agriculture",
+      "title": "Agriculture & Veterinary"
+    },
+    {
+      "id": "medical",
+      "title": "Medical & AYUSH"
+    },
+    {
+      "id": "legal",
+      "title": "Law & Legal"
+    },
+    {
+      "id": "finance",
+      "title": "Finance & Statistics"
+    },
+    {
+      "id": "science",
+      "title": "IT & Science"
+    },
+    {
+      "id": "other",
+      "title": "Other Departments"
     }
   ]
 }

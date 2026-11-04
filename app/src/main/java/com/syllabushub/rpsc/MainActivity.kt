@@ -66,7 +66,7 @@ private data class Exam(
 // One primary category per exam. The compact UI shows four quick tabs;
 // other non-empty categories appear under More, not as empty buttons.
 private data class ExamCategory(val id: String, val title: String)
-private val examCategories = listOf(
+private val legacyExamCategories = listOf(
     ExamCategory("teaching", "Teaching & Education"),
     ExamCategory("administrative", "RAS & Administration"),
     ExamCategory("police", "Police & Security"),
@@ -79,15 +79,36 @@ private val examCategories = listOf(
     ExamCategory("other", "Other Departments")
 )
 
-// Supports older cached catalogs until their category labels are migrated.
-private fun normalizedCategory(exam: Exam): String = when (exam.category) {
-    "college" -> "teaching"
-    "technical" -> "engineering"
-    else -> exam.category.takeIf { id -> examCategories.any { it.id == id } } ?: "other"
+// Older cached catalogs without exam_categories continue to use these defaults.
+// New categories are delivered through the online JSON without an APK rebuild.
+private fun readExamCategories(text: String): List<ExamCategory> {
+    val array = JSONObject(text).optJSONArray("exam_categories") ?: return legacyExamCategories
+    require(array.length() in 1..60) { "Invalid exam category count" }
+    val seen = mutableSetOf<String>()
+    val categories = buildList {
+        for (i in 0 until array.length()) {
+            val item = array.getJSONObject(i)
+            val id = item.getString("id")
+            val title = item.getString("title").trim()
+            require(Regex("[a-z0-9-]{2,40}").matches(id) &&
+                id !in setOf("all", "more") && seen.add(id)) { "Invalid or duplicate exam category" }
+            require(title.isNotBlank() && title.length <= 70) { "Invalid exam category title" }
+            add(ExamCategory(id, title))
+        }
+    }
+    require(categories.any { it.id == "other" }) { "Other category required" }
+    return categories
 }
 
-private fun categoryTitle(id: String): String =
-    examCategories.firstOrNull { it.id == id }?.title ?: "Other Departments"
+// Supports older cached catalogs until legacy category labels are migrated.
+private fun normalizedCategory(exam: Exam, categories: List<ExamCategory>): String = when (exam.category) {
+    "college" -> "teaching"
+    "technical" -> "engineering"
+    else -> exam.category.takeIf { id -> categories.any { it.id == id } } ?: "other"
+}
+
+private fun categoryTitle(id: String, categories: List<ExamCategory>): String =
+    categories.firstOrNull { it.id == id }?.title ?: "Other Departments"
 
 private data class ExploreItem(val id: String, val title: String, val status: String, val url: String)
 
@@ -114,7 +135,7 @@ private fun readExplore(text: String): List<ExploreItem> {
 
 private data class DownloadRecord(val requestId: Long, val documentId: String, val title: String)
 
-private fun readCatalog(text: String): List<Exam> {
+private fun readCatalog(text: String, categories: List<ExamCategory>): List<Exam> {
     val root = JSONObject(text)
     require(root.getInt("schema_version") == 2) { "Unsupported catalog" }
     val exams = root.getJSONArray("exams")
@@ -130,6 +151,11 @@ private fun readCatalog(text: String): List<Exam> {
             for (field in listOf("aliases_hi", "aliases_en", "post", "department", "subjects")) {
                 val array = exam.optJSONArray(field) ?: JSONArray()
                 for (j in 0 until array.length()) words.add(array.getString(j))
+            }
+            require(exam.getString("category") in categories.map { it.id } ||
+                (exam.getString("category") == "college" && categories.any { it.id == "teaching" }) ||
+                (exam.getString("category") == "technical" && categories.any { it.id == "engineering" })) {
+                "Exam references an unknown category"
             }
             val status = exam.getString("status")
             require(status == "planned" || status == "published") { "Invalid exam status" }
@@ -162,23 +188,28 @@ private fun readCatalog(text: String): List<Exam> {
     return parsed
 }
 
+private data class CatalogSnapshot(
+    val exams: List<Exam>,
+    val categories: List<ExamCategory>,
+    val explore: List<ExploreItem>
+)
+
+private fun readSnapshot(text: String): CatalogSnapshot {
+    val categories = readExamCategories(text)
+    return CatalogSnapshot(readCatalog(text, categories), categories, readExplore(text))
+}
+
 private class CatalogStore(private val context: Context) {
     private val cached = File(context.filesDir, "catalog_cache.json")
-    fun load(): List<Exam> {
+    fun load(): CatalogSnapshot {
         val bundled = context.assets.open("catalog.json").bufferedReader().use { it.readText() }
         val cachedText = runCatching { cached.readText() }.getOrNull()
         if (cachedText != null) {
-            runCatching { readCatalog(cachedText) }.getOrNull()?.let { return it }
+            runCatching { readSnapshot(cachedText) }.getOrNull()?.let { return it }
         }
-        return readCatalog(bundled)
+        return readSnapshot(bundled)
     }
-    fun loadExplore(): List<ExploreItem> {
-        val bundled = context.assets.open("catalog.json").bufferedReader().use { it.readText() }
-        val cachedText = runCatching { cached.readText() }.getOrNull()
-        return runCatching { readExplore(cachedText ?: bundled) }
-            .getOrElse { readExplore(bundled) }
-    }
-    fun refresh(onSuccess: (List<Exam>, List<ExploreItem>) -> Unit) {
+    fun refresh(onSuccess: (CatalogSnapshot) -> Unit) {
         val url = BuildConfig.CATALOG_URL
         if (url.isBlank() || !url.startsWith("https://")) return
         thread(name = "syllabus-catalog-refresh") {
@@ -201,15 +232,14 @@ private class CatalogStore(private val context: Context) {
                     }
                     require(bytes.size <= 2_000_000) { "Catalog too big" }
                     val json = bytes.toString(Charsets.UTF_8)
-                    val exams = readCatalog(json) // validate BEFORE replacing last-good cache
-                    val explore = readExplore(json)
+                    val snapshot = readSnapshot(json) // validate all sections before saving
                     val tmp = File(context.filesDir, "catalog_cache.tmp")
                     tmp.writeText(json)
                     if (!tmp.renameTo(cached)) { tmp.copyTo(cached, overwrite = true); tmp.delete() }
-                    Pair(exams, explore)
+                    snapshot
                 } finally { connection.disconnect() }
             }.getOrNull()
-            if (fresh != null) (context as? ComponentActivity)?.runOnUiThread { onSuccess(fresh.first, fresh.second) }
+            if (fresh != null) (context as? ComponentActivity)?.runOnUiThread { onSuccess(fresh) }
         }
     }
 }
@@ -299,13 +329,13 @@ private fun openDownloadedPdf(context: Context, uri: Uri) {
 @OptIn(ExperimentalMaterial3Api::class)
 class MainActivity : ComponentActivity() {
     private lateinit var catalogStore: CatalogStore
-    private var onCatalogUpdated: ((List<Exam>, List<ExploreItem>) -> Unit)? = null
+    private var onCatalogUpdated: ((CatalogSnapshot) -> Unit)? = null
 
     override fun onResume() {
         super.onResume()
         // Refresh whenever the user returns to the app, not only on process restart.
         if (::catalogStore.isInitialized) {
-            catalogStore.refresh { latest, explore -> onCatalogUpdated?.invoke(latest, explore) }
+            catalogStore.refresh { latest -> onCatalogUpdated?.invoke(latest) }
         }
     }
 
@@ -313,8 +343,13 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         catalogStore = CatalogStore(this)
         setContent {
-            var exams by remember { mutableStateOf(runCatching { catalogStore.load() }.getOrDefault(emptyList())) }
-            var exploreItems by remember { mutableStateOf(runCatching { catalogStore.loadExplore() }.getOrDefault(emptyList())) }
+            var snapshot by remember {
+                mutableStateOf(runCatching { catalogStore.load() }
+                    .getOrElse { CatalogSnapshot(emptyList(), legacyExamCategories, emptyList()) })
+            }
+            val exams = snapshot.exams
+            val exploreItems = snapshot.explore
+            val examCategories = snapshot.categories
             var bookmarks by remember { mutableStateOf(getBookmarks(this)) }
             var downloads by remember { mutableStateOf(getDownloads(this)) }
             var screen by rememberSaveable { mutableStateOf("home") }
@@ -324,7 +359,7 @@ class MainActivity : ComponentActivity() {
             var downloadRefresh by remember { mutableIntStateOf(0) }
 
             DisposableEffect(Unit) {
-                onCatalogUpdated = { latest, explore -> exams = latest; exploreItems = explore }
+                onCatalogUpdated = { latest -> snapshot = latest }
                 onDispose { onCatalogUpdated = null }
             }
             BackHandler(enabled = screen == "detail" || screen == "about" || (screen == "home" && category !in listOf("all", "teaching", "administrative"))) {
@@ -385,7 +420,8 @@ class MainActivity : ComponentActivity() {
                     Column(Modifier.padding(padding).fillMaxSize()) {
                         when (screen) {
                             "home" -> HomeScreen(
-                                exams = exams, query = search, onQuery = { search = it; if (it.isNotBlank()) category = "all" },
+                                exams = exams, categories = examCategories,
+                                query = search, onQuery = { search = it; if (it.isNotBlank()) category = "all" },
                                 category = category, onCategory = { category = it },
                                 onSelect = { selectedExam = it; screen = "detail" },
                                 bookmarks = bookmarks
@@ -499,26 +535,27 @@ private fun CompactBottomBar(selected: String, onSelect: (String) -> Unit) {
 
 @Composable
 private fun HomeScreen(
-    exams: List<Exam>, query: String, onQuery: (String) -> Unit,
+    exams: List<Exam>, categories: List<ExamCategory>,
+    query: String, onQuery: (String) -> Unit,
     category: String, onCategory: (String) -> Unit,
     onSelect: (String) -> Unit, bookmarks: Set<String>
 ) {
     val quickTabs = listOf("all" to "All", "teaching" to "Teaching", "administrative" to "RAS", "more" to "More")
     val selectedTab = if (category in listOf("all", "teaching", "administrative")) category else "more"
     val q = query.trim().lowercase()
-    val visible = remember(exams, query, category) {
+    val visible = remember(exams, categories, query, category) {
         exams.filter { exam ->
             val categoryMatch = category == "all" || category == "more" ||
-                normalizedCategory(exam) == category
-            val terms = listOf(exam.nameHi, exam.nameEn, categoryTitle(normalizedCategory(exam))) + exam.keywords
+                normalizedCategory(exam, categories) == category
+            val terms = listOf(exam.nameHi, exam.nameEn, categoryTitle(normalizedCategory(exam, categories), categories)) + exam.keywords
             categoryMatch && (q.isBlank() || terms.any { it.lowercase().contains(q) })
         }
     }
-    val grouped = remember(visible) { visible.groupBy { normalizedCategory(it) } }
-    val moreCategories = remember(exams) {
-        examCategories.filter { cat ->
+    val grouped = remember(visible, categories) { visible.groupBy { normalizedCategory(it, categories) } }
+    val moreCategories = remember(exams, categories) {
+        categories.filter { cat ->
             cat.id !in listOf("teaching", "administrative") &&
-                exams.any { normalizedCategory(it) == cat.id }
+                exams.any { normalizedCategory(it, categories) == cat.id }
         }
     }
 
@@ -609,7 +646,7 @@ private fun HomeScreen(
                     item { CompactEmptyState("No additional categories yet", "New categories appear as exams are added.") }
                 } else {
                     items(moreCategories, key = { "cat_${it.id}" }) { cat ->
-                        val count = exams.count { normalizedCategory(it) == cat.id }
+                        val count = exams.count { normalizedCategory(it, categories) == cat.id }
                         Surface(onClick = { onCategory(cat.id) },
                             color = MaterialTheme.colorScheme.surface,
                             shape = RoundedCornerShape(10.dp),
@@ -649,7 +686,7 @@ private fun HomeScreen(
                         CompactEmptyState("No matching exams", "Try a different exam name, subject or spelling.")
                     }
                 }
-                examCategories.forEach { cat ->
+                categories.forEach { cat ->
                     val section = grouped[cat.id].orEmpty()
                     if (section.isNotEmpty()) {
                         item(key = "heading_${cat.id}") {
