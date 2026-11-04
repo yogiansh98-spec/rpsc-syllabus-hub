@@ -89,6 +89,29 @@ private fun normalizedCategory(exam: Exam): String = when (exam.category) {
 private fun categoryTitle(id: String): String =
     examCategories.firstOrNull { it.id == id }?.title ?: "Other Departments"
 
+private data class ExploreItem(val id: String, val title: String, val status: String, val url: String)
+
+private fun readExplore(text: String): List<ExploreItem> {
+    val items = JSONObject(text).optJSONArray("explore_categories") ?: JSONArray()
+    require(items.length() <= 40) { "Too many Explore categories" }
+    val ids = mutableSetOf<String>()
+    return buildList {
+        for (i in 0 until items.length()) {
+            val item = items.getJSONObject(i)
+            val id = item.getString("id")
+            val title = item.getString("title")
+            val status = item.getString("status")
+            val url = item.optString("url")
+            require(Regex("[a-z0-9-]{2,40}").matches(id) && ids.add(id)) { "Invalid Explore ID" }
+            require(title.isNotBlank() && title.length <= 70) { "Invalid Explore title" }
+            require(status in listOf("coming_soon", "available")) { "Invalid Explore status" }
+            require(status != "available" || (url.startsWith("https://") && Uri.parse(url).host != null)) { "Explore URL required" }
+            require(url.isBlank() || (url.startsWith("https://") && Uri.parse(url).host != null)) { "Invalid Explore URL" }
+            add(ExploreItem(id, title, status, url))
+        }
+    }
+}
+
 private data class DownloadRecord(val requestId: Long, val documentId: String, val title: String)
 
 private fun readCatalog(text: String): List<Exam> {
@@ -149,7 +172,13 @@ private class CatalogStore(private val context: Context) {
         }
         return readCatalog(bundled)
     }
-    fun refresh(onSuccess: (List<Exam>) -> Unit) {
+    fun loadExplore(): List<ExploreItem> {
+        val bundled = context.assets.open("catalog.json").bufferedReader().use { it.readText() }
+        val cachedText = runCatching { cached.readText() }.getOrNull()
+        return runCatching { readExplore(cachedText ?: bundled) }
+            .getOrElse { readExplore(bundled) }
+    }
+    fun refresh(onSuccess: (List<Exam>, List<ExploreItem>) -> Unit) {
         val url = BuildConfig.CATALOG_URL
         if (url.isBlank() || !url.startsWith("https://")) return
         thread(name = "syllabus-catalog-refresh") {
@@ -173,13 +202,14 @@ private class CatalogStore(private val context: Context) {
                     require(bytes.size <= 2_000_000) { "Catalog too big" }
                     val json = bytes.toString(Charsets.UTF_8)
                     val exams = readCatalog(json) // validate BEFORE replacing last-good cache
+                    val explore = readExplore(json)
                     val tmp = File(context.filesDir, "catalog_cache.tmp")
                     tmp.writeText(json)
                     if (!tmp.renameTo(cached)) { tmp.copyTo(cached, overwrite = true); tmp.delete() }
-                    exams
+                    Pair(exams, explore)
                 } finally { connection.disconnect() }
             }.getOrNull()
-            if (fresh != null) (context as? ComponentActivity)?.runOnUiThread { onSuccess(fresh) }
+            if (fresh != null) (context as? ComponentActivity)?.runOnUiThread { onSuccess(fresh.first, fresh.second) }
         }
     }
 }
@@ -269,13 +299,13 @@ private fun openDownloadedPdf(context: Context, uri: Uri) {
 @OptIn(ExperimentalMaterial3Api::class)
 class MainActivity : ComponentActivity() {
     private lateinit var catalogStore: CatalogStore
-    private var onCatalogUpdated: ((List<Exam>) -> Unit)? = null
+    private var onCatalogUpdated: ((List<Exam>, List<ExploreItem>) -> Unit)? = null
 
     override fun onResume() {
         super.onResume()
         // Refresh whenever the user returns to the app, not only on process restart.
         if (::catalogStore.isInitialized) {
-            catalogStore.refresh { latest -> onCatalogUpdated?.invoke(latest) }
+            catalogStore.refresh { latest, explore -> onCatalogUpdated?.invoke(latest, explore) }
         }
     }
 
@@ -284,6 +314,7 @@ class MainActivity : ComponentActivity() {
         catalogStore = CatalogStore(this)
         setContent {
             var exams by remember { mutableStateOf(runCatching { catalogStore.load() }.getOrDefault(emptyList())) }
+            var exploreItems by remember { mutableStateOf(runCatching { catalogStore.loadExplore() }.getOrDefault(emptyList())) }
             var bookmarks by remember { mutableStateOf(getBookmarks(this)) }
             var downloads by remember { mutableStateOf(getDownloads(this)) }
             var screen by rememberSaveable { mutableStateOf("home") }
@@ -293,7 +324,7 @@ class MainActivity : ComponentActivity() {
             var downloadRefresh by remember { mutableIntStateOf(0) }
 
             DisposableEffect(Unit) {
-                onCatalogUpdated = { latest -> exams = latest }
+                onCatalogUpdated = { latest, explore -> exams = latest; exploreItems = explore }
                 onDispose { onCatalogUpdated = null }
             }
             BackHandler(enabled = screen == "detail" || screen == "about" || (screen == "home" && category !in listOf("all", "teaching", "administrative"))) {
@@ -389,7 +420,7 @@ class MainActivity : ComponentActivity() {
                             "about" -> AboutScreen(onOpenOfficial = {
                                 openOfficialPdf(this@MainActivity, "https://rpsc.rajasthan.gov.in/")
                             })
-                            "explore" -> ExploreScreen()
+                            "explore" -> ExploreScreen(exploreItems, onOpen = { openOfficialPdf(this@MainActivity, it) })
                             "bookmarks" -> SavedScreen(exams.filter { it.id in bookmarks }) {
                                 selectedExam = it; screen = "detail"
                             }
@@ -650,18 +681,38 @@ private fun HomeScreen(
 }
 
 @Composable
-private fun ExploreScreen() {
+private fun ExploreScreen(items: List<ExploreItem>, onOpen: (String) -> Unit) {
     Column(
         modifier = Modifier.fillMaxSize().padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Text("Explore", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
-        Text("More exam resources are on the way",
+        Text("More exam resources",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
-            UpcomingFeatureCard("Previous Year Papers", Icons.Filled.Description, Modifier.weight(1f))
-            UpcomingFeatureCard("Exam Study Plan", Icons.Filled.DateRange, Modifier.weight(1f))
+        if (items.isEmpty()) {
+            Text("More categories coming soon")
+        } else {
+            LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                items(items.chunked(2)) { pair ->
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+                        pair.forEach { item ->
+                            UpcomingFeatureCard(
+                                item.title,
+                                when (item.id) {
+                                    "previous-year-papers" -> Icons.Filled.Description
+                                    "exam-study-plan" -> Icons.Filled.DateRange
+                                    else -> Icons.Filled.FolderOpen
+                                },
+                                Modifier.weight(1f),
+                                status = if (item.status == "available") "Open" else "Coming Soon",
+                                onClick = if (item.status == "available") ({ onOpen(item.url) }) else null
+                            )
+                        }
+                        if (pair.size == 1) Spacer(Modifier.weight(1f))
+                    }
+                }
+            }
         }
     }
 }
@@ -670,10 +721,12 @@ private fun ExploreScreen() {
 private fun UpcomingFeatureCard(
     title: String,
     icon: androidx.compose.ui.graphics.vector.ImageVector,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    status: String = "Coming Soon",
+    onClick: (() -> Unit)? = null
 ) {
     Surface(
-        modifier = modifier,
+        modifier = if (onClick != null) modifier.clickable(onClick = onClick) else modifier,
         shape = RoundedCornerShape(12.dp),
         color = MaterialTheme.colorScheme.surface,
         border = androidx.compose.foundation.BorderStroke(
@@ -698,7 +751,7 @@ private fun UpcomingFeatureCard(
                 overflow = TextOverflow.Ellipsis
             )
             Text(
-                "Coming Soon",
+                status,
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

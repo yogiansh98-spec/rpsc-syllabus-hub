@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "catalog_version": 2,
+  "catalog_version": 3,
   "published_at": "2026-11-04T00:00:00Z",
   "catalog_note": "APP SHELL TEST v0.3: 10-category taxonomy; 5 exam placeholders; ZERO unverified PDFs.",
   "exams": [
@@ -161,6 +161,18 @@
         "Agricultural Engineering"
       ],
       "documents": []
+    }
+  ],
+  "explore_categories": [
+    {
+      "id": "previous-year-papers",
+      "title": "Previous Year Papers",
+      "status": "coming_soon"
+    },
+    {
+      "id": "exam-study-plan",
+      "title": "Exam Study Plan",
+      "status": "coming_soon"
     }
   ]
 }
