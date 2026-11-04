@@ -1,0 +1,166 @@
+{
+  "schema_version": 2,
+  "catalog_version": 2,
+  "published_at": "2026-11-04T00:00:00Z",
+  "catalog_note": "APP SHELL TEST v0.3: 10-category taxonomy; 5 exam placeholders; ZERO unverified PDFs.",
+  "exams": [
+    {
+      "id": "ras",
+      "name_hi": "RAS / राज्य एवं अधीनस्थ सेवाएँ",
+      "name_en": "RAS / RTS Combined Competitive Examination",
+      "category": "administrative",
+      "status": "planned",
+      "aliases_hi": [
+        "आरएएस",
+        "राजस्थान प्रशासनिक सेवा"
+      ],
+      "aliases_en": [
+        "RAS",
+        "RTS",
+        "RPSC RAS",
+        "Rajasthan Administrative Services"
+      ],
+      "post": [
+        "RAS",
+        "RTS"
+      ],
+      "department": [
+        "RPSC"
+      ],
+      "subjects": [
+        "General Knowledge",
+        "General Science",
+        "General Studies"
+      ],
+      "documents": []
+    },
+    {
+      "id": "senior-teacher",
+      "name_hi": "वरिष्ठ अध्यापक (2nd Grade)",
+      "name_en": "Senior Teacher / 2nd Grade",
+      "category": "teaching",
+      "status": "planned",
+      "aliases_hi": [
+        "द्वितीय श्रेणी शिक्षक",
+        "सेकंड ग्रेड",
+        "वरिष्ठ अध्यापक"
+      ],
+      "aliases_en": [
+        "2nd grade",
+        "senior teacher",
+        "second grade",
+        "grade ii"
+      ],
+      "post": [
+        "Senior Teacher"
+      ],
+      "department": [
+        "School Education"
+      ],
+      "subjects": [
+        "GK",
+        "Hindi",
+        "English",
+        "Mathematics",
+        "Science",
+        "Social Science",
+        "Sanskrit",
+        "Urdu",
+        "Punjabi",
+        "Sindhi",
+        "Gujarati"
+      ],
+      "documents": []
+    },
+    {
+      "id": "school-lecturer",
+      "name_hi": "स्कूल व्याख्याता (1st Grade)",
+      "name_en": "School Lecturer / 1st Grade",
+      "category": "teaching",
+      "status": "planned",
+      "aliases_hi": [
+        "प्रथम श्रेणी शिक्षक",
+        "स्कूल लेक्चरर"
+      ],
+      "aliases_en": [
+        "1st grade",
+        "school lecturer",
+        "first grade"
+      ],
+      "post": [
+        "School Lecturer"
+      ],
+      "department": [
+        "School Education"
+      ],
+      "subjects": [
+        "GK",
+        "Hindi",
+        "English",
+        "History",
+        "Geography",
+        "Mathematics",
+        "Agriculture"
+      ],
+      "documents": []
+    },
+    {
+      "id": "assistant-professor",
+      "name_hi": "सहायक आचार्य (कॉलेज शिक्षा)",
+      "name_en": "Assistant Professor / College Education",
+      "category": "teaching",
+      "status": "planned",
+      "aliases_hi": [
+        "असिस्टेंट प्रोफेसर",
+        "कॉलेज व्याख्याता"
+      ],
+      "aliases_en": [
+        "assistant professor",
+        "college education",
+        "lecturer"
+      ],
+      "post": [
+        "Assistant Professor"
+      ],
+      "department": [
+        "College Education"
+      ],
+      "subjects": [
+        "Rajasthan GK",
+        "Subject Paper I",
+        "Subject Paper II"
+      ],
+      "documents": []
+    },
+    {
+      "id": "assistant-engineer-combined",
+      "name_hi": "सहायक अभियंता संयुक्त परीक्षा",
+      "name_en": "Assistant Engineer Combined Examination",
+      "category": "engineering",
+      "status": "planned",
+      "aliases_hi": [
+        "एई",
+        "सहायक अभियंता"
+      ],
+      "aliases_en": [
+        "AE",
+        "AEN",
+        "Assistant Engineer",
+        "Combined Engineering Services"
+      ],
+      "post": [
+        "Assistant Engineer"
+      ],
+      "department": [
+        "Combined Examination"
+      ],
+      "subjects": [
+        "Civil Engineering",
+        "Electrical Engineering",
+        "Mechanical Engineering",
+        "Agricultural Engineering"
+      ],
+      "documents": []
+    }
+  ]
+}
