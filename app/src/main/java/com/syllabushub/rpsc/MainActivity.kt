@@ -315,7 +315,7 @@ class MainActivity : ComponentActivity() {
                                 Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
                                     Text("Syllabus Hub", style = MaterialTheme.typography.titleLarge,
                                         fontWeight = FontWeight.Bold)
-                                    Text("Unofficial RPSC syllabus directory",
+                                    Text("RPSC Exam Syllabus",
                                         style = MaterialTheme.typography.labelSmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 }
@@ -764,19 +764,19 @@ private fun ExamScreen(
                 singleLine = true, modifier = Modifier.fillMaxWidth()
             )
             Spacer(Modifier.height(12.dp))
-            Text("${ordered.size} verified official syllabus PDF", style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold)
-            Text("केवल नवीनतम लागू, सत्यापित official syllabus ही प्रकाशित होंगे।",
-                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
+            if (ordered.isNotEmpty()) {
+                Text("Syllabus PDFs (${ordered.size})", style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold)
+            }
         }
         if (ordered.isEmpty()) {
             item {
                 ElevatedCard {
                     Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Icon(Icons.Filled.HourglassEmpty, contentDescription = null, tint = MaterialTheme.colorScheme.secondary)
-                        Text(if (exam.status == "planned") "इस परीक्षा का syllabus अभी जोड़ा जा रहा है" else "इस खोज के लिए syllabus नहीं मिला",
+                        Icon(Icons.Filled.MenuBook, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                        Text(if (exam.status == "planned") "Syllabus अभी उपलब्ध नहीं है" else "इस विषय का Syllabus नहीं मिला",
                             fontWeight = FontWeight.SemiBold)
-                        Text("Verified PDF जोड़ने के बाद यही स्क्रीन Paper और Subject के अनुसार अपने आप अपडेट हो जाएगी।",
+                        Text(if (exam.status == "planned") "इस परीक्षा के Paper और Subject के Syllabus जल्द यहाँ मिलेंगे।" else "दूसरा Paper या Subject खोजकर देखें।",
                             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
                     }
                 }
@@ -809,7 +809,6 @@ private fun ExamScreen(
                 }
             }
         }
-        item { IndependenceNotice() }
     }
 }
 
@@ -877,9 +876,3 @@ private fun DownloadsScreen(
     )
 }
 
-@Composable
-private fun IndependenceNotice() {
-    Text("स्वतंत्र शैक्षणिक ऐप। यह RPSC या राजस्थान सरकार का आधिकारिक ऐप नहीं है। किसी भी सूचना के लिए RPSC की मूल PDF देखें।",
-        style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary,
-        modifier = Modifier.padding(vertical = 14.dp))
-}
