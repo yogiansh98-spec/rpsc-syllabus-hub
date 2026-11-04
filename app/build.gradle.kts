@@ -10,10 +10,12 @@ android {
         applicationId = "com.syllabushub.rpsc"
         minSdk = 24
         targetSdk = 36
-        versionCode = 3
-        versionName = "0.4.1-copy"
-        // Supply -PcatalogUrl=https://.../catalog.json after verified catalog is hosted.
-        val catalogUrl = providers.gradleProperty("catalogUrl").orElse("").get()
+        versionCode = 4
+        versionName = "0.5.0-catalog"
+        // Public GitHub raw JSON; publish only validated and manually reviewed syllabus data.
+        val catalogUrl = providers.gradleProperty("catalogUrl")
+            .orElse("https://raw.githubusercontent.com/yogiansh98-spec/rpsc-syllabus-hub/main/catalog/catalog.json")
+            .get().ifBlank { "https://raw.githubusercontent.com/yogiansh98-spec/rpsc-syllabus-hub/main/catalog/catalog.json" }
         require(catalogUrl.isEmpty() || catalogUrl.startsWith("https://")) { "HTTPS catalog URL required" }
         buildConfigField("String", "CATALOG_URL", "\"$catalogUrl\"")
     }
