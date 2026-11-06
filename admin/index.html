@@ -21,12 +21,12 @@ h2{font-size:1.1rem;margin:0 0 12px}h3{font-size:1rem}fieldset{border:1px solid 
 <body>
 <header><h1>RPSC Syllabus Hub · Admin Draft Editor</h1><p>परीक्षा, विषय, मूल PDF और स्वतंत्र हिंदी अनुवाद का संपादन</p></header>
 <main>
-<p class="notice"><strong>सुरक्षा:</strong> यह स्थानीय ड्राफ्ट एडिटर है, लॉगिन या सर्वर नहीं। यह GitHub पर सीधे बदलाव प्रकाशित नहीं करता। केवल सत्यापित बदलाव Export करके repository review में जमा करें। यहाँ GitHub token या password कभी न डालें।</p>
+<p class="notice"><strong>सुरक्षा:</strong> Admin Login कॉन्फ़िगर होने तक केवल Draft editing काम करेगी। Publish अनुरोध हमेशा GitHub Pull Request बनाता है, सीधे ऐप नहीं बदलता। GitHub token/password कभी न डालें।</p><section class="toolbar"><div class="flex"><a id="loginLink" href="/api/login">GitHub से Admin Login</a><button id="logout" hidden>Logout</button><strong id="who" class="muted">Not signed in</strong></div><p class="muted">पहले PDF की जाँच करें और GitHub Review के बाद ही Merge करें।</p></section>
 <section class="toolbar">
 <div class="flex">
 <button id="load" class="primary">मौजूदा Catalog लोड करें</button>
 <label class="filebtn" for="import" style="margin:0">JSON Import करें</label><input type="file" id="import" accept=".json,application/json" hidden>
-<button id="export" disabled>ड्राफ्ट JSON डाउनलोड करें</button><button id="validate" disabled>जाँचें</button>
+<button id="export" disabled>ड्राफ्ट JSON डाउनलोड करें</button><button id="validate" disabled>जाँचें</button><button id="requestPublish" disabled>GitHub Review Request बनाएँ</button>
 </div><p id="status" class="muted" role="status">शुरू करने के लिए Catalog लोड करें या अपनी JSON फ़ाइल चुनें।</p>
 </section>
 <div class="two"><section class="panel"><h2>परीक्षाएँ</h2><div id="exams"></div><button id="addExam" disabled>+ नई परीक्षा</button><hr><h2>श्रेणियाँ</h2><div id="categories"></div><button id="addCategory" disabled>+ नई श्रेणी</button></section>
@@ -36,17 +36,18 @@ h2{font-size:1.1rem;margin:0 0 12px}h3{font-size:1rem}fieldset{border:1px solid 
 <script>
 "use strict";
 const repo="yogiansh98-spec/rpsc-syllabus-hub";
-let data=null,selected=0;
+let data=null,selected=0,loggedIn=false,baseSha=null,baseVersion=null;
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const slug=s=>String(s||"").toLowerCase().trim().replace(/[^a-z0-9-]+/g,"-").replace(/^-|-$/g,"");
 const htmlField=(label,value,path,type="text")=>'<label>'+esc(label)+'</label><input data-field="'+esc(path)+'" type="'+type+'" value="'+esc(value)+'">';
 const htmlArea=(label,value,path)=>'<label>'+esc(label)+'</label><textarea rows="2" data-field="'+esc(path)+'">'+esc(value)+'</textarea>';
 const status=t=>$("status").textContent=t;
-function init(obj){if(!obj||obj.schema_version!==2||!Array.isArray(obj.exams)||!Array.isArray(obj.exam_categories))throw Error("schema_version=2, exams और exam_categories जरूरी हैं");data=structuredClone(obj);selected=0;["export","validate","addExam","addCategory"].forEach(x=>$(x).disabled=false);render();status("Catalog ड्राफ्ट लोड हुआ — कोई बदलाव प्रकाशित नहीं हुआ।")}
-$("load").onclick=async()=>{try{status("लोड हो रहा है…");const r=await fetch("https://raw.githubusercontent.com/"+repo+"/main/catalog/catalog.json",{cache:"no-store"});if(!r.ok)throw Error("HTTP "+r.status);init(await r.json())}catch(e){status("लोड विफल: "+e.message+" — JSON Import इस्तेमाल करें।")}};
-$("import").onchange=async e=>{const f=e.target.files[0];if(!f)return;try{init(JSON.parse(await f.text()))}catch(err){status("गलत JSON: "+err.message)}e.target.value=""};
-function render(){if(!data)return; $("exams").innerHTML=data.exams.map((e,i)=>'<div class="row '+(i===selected?"active":"")+'" data-index="'+i+'"><b>'+esc(e.name_hi||e.id)+'</b><div class="muted">'+esc(e.status)+" · "+(e.documents||[]).length+" दस्तावेज़</div></div>").join("");
+function init(obj){if(!obj||obj.schema_version!==2||!Array.isArray(obj.exams)||!Array.isArray(obj.exam_categories))throw Error("schema_version=2, exams और exam_categories जरूरी हैं");data=structuredClone(obj);selected=0;$("requestPublish").disabled=!loggedIn;["export","validate","addExam","addCategory"].forEach(x=>$(x).disabled=false);render();status("Catalog ड्राफ्ट लोड हुआ — कोई बदलाव प्रकाशित नहीं हुआ।")}
+$("load").onclick=async()=>{try{status("लोड हो रहा है…");const r=await fetch("https://raw.githubusercontent.com/"+repo+"/main/catalog/catalog.json",{cache:"no-store"});if(!r.ok)throw Error("HTTP "+r.status);init(await r.json());await loadBase()}catch(e){status("लोड विफल: "+e.message+" — JSON Import इस्तेमाल करें।")}};
+$("import").onchange=async e=>{const f=e.target.files[0];if(!f)return;try{init(JSON.parse(await f.text()));await loadBase()}catch(err){status("गलत JSON: "+err.message)}e.target.value=""};
+async function loadBase(){if(!loggedIn)return;try{const r=await fetch("/api/base",{credentials:"same-origin"});if(!r.ok)throw Error("HTTP "+r.status);const b=await r.json();baseSha=b.sha;baseVersion=b.version;}catch(e){baseSha=null;baseVersion=null;status("Review request unavailable: "+e.message)}}
+async function checkLogin(){try{const r=await fetch("/api/me",{credentials:"same-origin"});if(!r.ok)throw Error("Not signed in");const me=await r.json();loggedIn=!!me.loggedIn;$("who").textContent="Admin: "+me.user;$("loginLink").hidden=true;$("logout").hidden=false;$("requestPublish").disabled=!data;await loadBase();}catch{loggedIn=false;$("who").textContent="Not signed in — Draft mode only";$("requestPublish").disabled=true;}}if(!data)return; $("exams").innerHTML=data.exams.map((e,i)=>'<div class="row '+(i===selected?"active":"")+'" data-index="'+i+'"><b>'+esc(e.name_hi||e.id)+'</b><div class="muted">'+esc(e.status)+" · "+(e.documents||[]).length+" दस्तावेज़</div></div>").join("");
 $("categories").innerHTML=data.exam_categories.map((c,i)=>'<div class="row"><input aria-label="श्रेणी शीर्षक" data-category="'+i+'" value="'+esc(c.title)+'"><small class="muted">'+esc(c.id)+'</small></div>').join("");
 $("exams").querySelectorAll("[data-index]").forEach(x=>x.onclick=()=>{selected=+x.dataset.index;render()});
 $("categories").querySelectorAll("[data-category]").forEach(x=>x.onchange=()=>{data.exam_categories[+x.dataset.category].title=x.value.trim();render()});
@@ -97,4 +98,14 @@ return {errors,warn}
 $("validate").onclick=()=>{const v=valid();$("messages").innerHTML=(v.errors.length?'<b class="bad">FAIL — '+v.errors.length+' समस्याएँ</b>':'<b class="ok">Structural checks PASS</b>')+"\n"+esc([...v.errors,...v.warn].map((s,i)=>(i+1)+". "+s).join("\n"))};
 $("export").onclick=()=>{const v=valid();if(v.errors.length){$("validate").click();alert("त्रुटियाँ ठीक किए बिना Export नहीं होगा।");return}
 const d=structuredClone(data);d.catalog_version=(Number(d.catalog_version)||0)+1;d.published_at=new Date().toISOString().replace(/\.\d{3}Z$/,"Z");const blob=new Blob([JSON.stringify(d,null,2)+"\n"],{type:"application/json"}),url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download="catalog-draft-v"+d.catalog_version+".json";a.click();setTimeout(()=>URL.revokeObjectURL(url),30000);status("ड्राफ्ट डाउनलोड हुआ। GitHub में Pull Request और CI जाँच अभी बाकी है।")};
+$("logout").onclick=async()=>{const r=await fetch("/api/logout",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:"{}"});if(r.ok)location.reload();else status("Logout failed")};
+$("requestPublish").onclick=async()=>{if(!loggedIn||!data)return;const v=valid();if(v.errors.length){$("validate").click();return alert("पहले Validation Errors ठीक करें");}
+if(!baseSha||!Number.isInteger(baseVersion))return alert("Latest catalog base नहीं मिला। Reload करें");
+if(data.catalog_version!==baseVersion)return alert("ड्राफ्ट पुराना है। नया catalog लोड करके बदलाव दोबारा जाँचें।");
+const ok=confirm("क्या हर मूल RPSC PDF, Hindi translation और latest notices की खुद जाँच कर ली है? यह सिर्फ Draft Pull Request बनाएगा, सीधे Publish नहीं होगा।");if(!ok)return;
+const d=structuredClone(data);d.catalog_version=baseVersion+1;d.published_at=new Date().toISOString().replace(/\.\d{3}Z$/,"Z");
+$("requestPublish").disabled=true;status("GitHub Draft Pull Request बनाया जा रहा है…");
+try{const r=await fetch("/api/publish",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify({catalog:d,baseSha,baseVersion,confirm:true})});const x=await r.json();if(!r.ok)throw Error(x.error||"Request failed");status("Review Request तैयार: "+x.pr);$("messages").textContent="Draft PR #"+x.number+" बनाया गया। GitHub में Review और CI के बाद ही Merge करें।";const a=document.createElement("a");a.href=x.pr;a.textContent="GitHub Review Request खोलें";a.target="_blank";a.rel="noopener noreferrer";$("messages").appendChild(document.createElement("p")).appendChild(a)}catch(e){status("Publish request failed: "+e.message)}finally{$("requestPublish").disabled=false;}
+};
+checkLogin();
 </script></body></html>
