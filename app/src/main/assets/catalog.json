@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
-  "catalog_version": 7,
-  "published_at": "2026-11-06T13:45:00Z",
+  "catalog_version": 8,
+  "published_at": "2026-11-06T14:00:00Z",
   "catalog_note": "Senior Teacher 2025 GK Paper I: independently translated Hindi PDF available alongside official RPSC English; 8 other papers/subjects pending verification.",
   "exams": [
     {
@@ -82,7 +82,8 @@
           "verified_at": "2026-11-04",
           "notes": "Official RPSC English PDF. Independent Hindi translation is separate and is not an official RPSC publication.",
           "official_language": "en",
-          "translation_hi_url": "https://github.com/yogiansh98-spec/rpsc-syllabus-hub/releases/download/v0.7.0-multilingual-test/RPSC_2nd_Grade_2025_GK_Paper1_Hindi.pdf"
+          "translation_hi_url": "https://github.com/yogiansh98-spec/rpsc-syllabus-hub/releases/download/v0.7.0-multilingual-test/RPSC_2nd_Grade_2025_GK_Paper1_Hindi.pdf",
+          "translation_hi_label": "Hindi PDF • Translated by Author"
         },
         {
           "id": "senior-teacher-2025-paper2-hindi",

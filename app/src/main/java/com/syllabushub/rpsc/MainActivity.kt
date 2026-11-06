@@ -52,6 +52,7 @@ private data class SyllabusDocument(
     val officialUrl: String,
     val officialLanguage: String,
     val translationHiUrl: String,
+    val translationHiLabel: String,
     val notes: String
 )
 
@@ -196,12 +197,14 @@ private fun readCatalog(text: String, categories: List<ExamCategory>): List<Exam
                         uri.path.orEmpty().endsWith(".pdf", ignoreCase = true)) { "Non-official PDF URL" }
                     val hiUrl = doc.optString("translation_hi_url")
                     require(hiUrl.isBlank() || allowedTranslationUrl(hiUrl)) { "Bad independent Hindi PDF URL" }
+                    val translationHiLabel = doc.optString("translation_hi_label", "Hindi PDF • Translated by Author").trim()
+                    require(translationHiLabel.length in 1..90 && !translationHiLabel.contains("\\n")) { "Invalid Hindi label" }
                     val officialLanguage = doc.optString("official_language", "original")
                     require(officialLanguage in listOf("original", "en", "hi", "mixed")) { "Bad original language" }
                     add(SyllabusDocument(
                         documentId, doc.optString("stage"), doc.optString("paper"),
                         doc.optString("subject"), doc.getString("edition_label"), pdfUrl,
-                        officialLanguage, hiUrl, doc.optString("notes")
+                        officialLanguage, hiUrl, translationHiLabel, doc.optString("notes")
                     ))
                 }
             }
@@ -1025,7 +1028,7 @@ private fun ExamScreen(
                         Text("Source: rpsc.rajasthan.gov.in", style = MaterialTheme.typography.labelSmall)
                         if (doc.translationHiUrl.isNotBlank()) {
                             HorizontalDivider()
-                            Text("हिंदी PDF • स्वतंत्र अनुवाद; RPSC का आधिकारिक हिंदी प्रकाशन नहीं",
+                            Text(doc.translationHiLabel,
                                 style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 Button(onClick = { onOpen(doc, true) }, modifier = Modifier.weight(1f)) {

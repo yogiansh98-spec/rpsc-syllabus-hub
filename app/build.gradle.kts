@@ -10,8 +10,8 @@ android {
         applicationId = "com.syllabushub.rpsc"
         minSdk = 24
         targetSdk = 36
-        versionCode = 9
-        versionName = "0.7.0-multilingual"
+        versionCode = 10
+        versionName = "0.7.1-remote-labels"
         // Public GitHub raw JSON; publish only validated and manually reviewed syllabus data.
         val catalogUrl = providers.gradleProperty("catalogUrl")
             .orElse("https://raw.githubusercontent.com/yogiansh98-spec/rpsc-syllabus-hub/main/catalog/catalog.json")

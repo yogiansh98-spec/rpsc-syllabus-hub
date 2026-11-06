@@ -43,9 +43,9 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "v0.7.0-multilingual-test" \
-            "app/build/outputs/apk/debug/app-debug.apk#RPSC-Syllabus-Hub-v0.7.0.apk" \
+          gh release create "v0.7.1-remote-labels-test" \
+            "app/build/outputs/apk/debug/app-debug.apk#RPSC-Syllabus-Hub-v0.7.1.apk" \
             --target "$GITHUB_SHA" \
-            --title "Syllabus Hub v0.7.0 - Multilingual Syllabus Support" \
+            --title "Syllabus Hub v0.7.1 - Remote Hindi PDF Labels" \
             --prerelease \
             --notes "Testing build, not a Play Store or government release. The app is not affiliated with RPSC. Online exam_categories and Explore categories refresh from validated JSON. New exam categories and exams can be added without another APK. Three verified official Senior Teacher 2025 PDFs are available; remaining subjects pending verification. Multilingual PDF URL handling is enabled. Original official and independent Hindi translation files remain separately labeled. Any Hindi translation link is added only once its hosted PDF exists."
