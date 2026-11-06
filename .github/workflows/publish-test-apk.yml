@@ -5,8 +5,8 @@ on:
     branches: [main]
     paths:
       - ".github/workflows/publish-test-apk.yml"
-      - "app/**"
-      - "catalog/**"
+      - "app/src/main/java/**"
+      - "app/build.gradle.kts"
   workflow_dispatch:
 
 permissions:
