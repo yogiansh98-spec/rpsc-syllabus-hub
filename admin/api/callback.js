@@ -1,0 +1,7 @@
+const crypto=require("node:crypto");const {OWNER_ID,config,cookie,clear,cookies,seal,gh,fail,method}=require("./_lib");
+module.exports=async(req,res)=>{if(!method(req,res,"GET"))return;let c;try{c=config()}catch{return fail(res,503,"Login not configured");}
+const saved=cookies(req).rpsc_oauth_state,received=req.query.state;res.setHeader("Set-Cookie",clear("rpsc_oauth_state"));
+if(!saved||typeof received!=="string"||saved.length!==received.length||!crypto.timingSafeEqual(Buffer.from(saved),Buffer.from(received)))return fail(res,403,"Invalid login state");
+if(typeof req.query.code!=="string")return fail(res,400,"Missing OAuth code");
+try{const r=await fetch("https://github.com/login/oauth/access_token",{method:"POST",headers:{"Accept":"application/json","Content-Type":"application/json"},body:JSON.stringify({client_id:c.clientId,client_secret:c.clientSecret,code:req.query.code,redirect_uri:c.origin+"/api/callback"})});const o=await r.json();if(!r.ok||!o.access_token)throw Error("OAuth exchange failed");const user=await gh(o.access_token,"/user");if(user.id!==OWNER_ID)return fail(res,403,"This GitHub account is not an admin");
+const session=seal({id:user.id,token:o.access_token,expires:Date.now()+8*3600e3},c.secret);res.setHeader("Set-Cookie",[clear("rpsc_oauth_state"),cookie("rpsc_admin",session,8*3600)]);res.setHeader("Cache-Control","no-store");return res.redirect(302,c.origin+"/");}catch(e){return fail(res,401,"Could not sign in: "+e.message)} };
