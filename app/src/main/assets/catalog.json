@@ -1,8 +1,8 @@
 {
   "schema_version": 2,
-  "catalog_version": 8,
-  "published_at": "2026-11-06T14:00:00Z",
-  "catalog_note": "Senior Teacher 2025 GK Paper I: independently translated Hindi PDF available alongside official RPSC English; 8 other papers/subjects pending verification.",
+  "catalog_version": 9,
+  "published_at": "2026-11-06T14:45:00Z",
+  "catalog_note": "Senior Teacher 2025 Paper I and all ten Paper II subjects are now listed with RPSC PDF links.",
   "exams": [
     {
       "id": "ras",
@@ -107,10 +107,106 @@
           "edition_status": "current_verified",
           "verified_at": "2026-11-04",
           "notes": "Senior Teacher Secondary Education 2025; official RPSC PDF. Other subjects pending PDF verification."
+        },
+        {
+          "id": "senior-teacher-2025-paper2-urdu",
+          "stage": "Written",
+          "paper": "Paper II",
+          "subject": "Urdu",
+          "edition_label": "Sr. Teacher (Sec. Edu.) Comp. Exam - 2025 • 25 Sep 2025",
+          "official_url": "https://rpsc.rajasthan.gov.in/Static/Syllabus/A5AF9663-C9FC-4A91-9485-04750C7203B9.pdf",
+          "edition_status": "current_verified",
+          "verified_at": "2026-11-06",
+          "notes": "RPSC official PDF URL matched to the subject on the 25 September 2025 syllabus index.",
+          "official_language": "original"
+        },
+        {
+          "id": "senior-teacher-2025-paper2-sindhi",
+          "stage": "Written",
+          "paper": "Paper II",
+          "subject": "Sindhi",
+          "edition_label": "Sr. Teacher (Sec. Edu.) Comp. Exam - 2025 • 25 Sep 2025",
+          "official_url": "https://rpsc.rajasthan.gov.in/Static/Syllabus/2DEAB73F-5C5E-4AF5-A4B1-F6BBA9E83A03.pdf",
+          "edition_status": "current_verified",
+          "verified_at": "2026-11-06",
+          "notes": "RPSC official PDF URL matched to the subject on the 25 September 2025 syllabus index.",
+          "official_language": "original"
+        },
+        {
+          "id": "senior-teacher-2025-paper2-science",
+          "stage": "Written",
+          "paper": "Paper II",
+          "subject": "Science",
+          "edition_label": "Sr. Teacher (Sec. Edu.) Comp. Exam - 2025 • 25 Sep 2025",
+          "official_url": "https://rpsc.rajasthan.gov.in/Static/Syllabus/DE9E1C23-11C6-4D4F-AF03-5B15C7D22D0D.pdf",
+          "edition_status": "current_verified",
+          "verified_at": "2026-11-06",
+          "notes": "RPSC official PDF URL matched to the subject on the 25 September 2025 syllabus index.",
+          "official_language": "original"
+        },
+        {
+          "id": "senior-teacher-2025-paper2-sanskrit",
+          "stage": "Written",
+          "paper": "Paper II",
+          "subject": "Sanskrit",
+          "edition_label": "Sr. Teacher (Sec. Edu.) Comp. Exam - 2025 • 25 Sep 2025",
+          "official_url": "https://rpsc.rajasthan.gov.in/Static/Syllabus/0623B200-D45D-41FA-BB5F-24A94CA928A4.pdf",
+          "edition_status": "current_verified",
+          "verified_at": "2026-11-06",
+          "notes": "RPSC official PDF URL matched to the subject on the 25 September 2025 syllabus index.",
+          "official_language": "original"
+        },
+        {
+          "id": "senior-teacher-2025-paper2-punjabi",
+          "stage": "Written",
+          "paper": "Paper II",
+          "subject": "Punjabi",
+          "edition_label": "Sr. Teacher (Sec. Edu.) Comp. Exam - 2025 • 25 Sep 2025",
+          "official_url": "https://rpsc.rajasthan.gov.in/Static/Syllabus/F9BBFD66-B0FB-45BE-9516-127FF16804AD.pdf",
+          "edition_status": "current_verified",
+          "verified_at": "2026-11-06",
+          "notes": "RPSC official PDF URL matched to the subject on the 25 September 2025 syllabus index.",
+          "official_language": "original"
+        },
+        {
+          "id": "senior-teacher-2025-paper2-mathematics",
+          "stage": "Written",
+          "paper": "Paper II",
+          "subject": "Mathematics",
+          "edition_label": "Sr. Teacher (Sec. Edu.) Comp. Exam - 2025 • 25 Sep 2025",
+          "official_url": "https://rpsc.rajasthan.gov.in/Static/Syllabus/74DC5DB8-E521-493C-BECD-5E76FD9402BE.pdf",
+          "edition_status": "current_verified",
+          "verified_at": "2026-11-06",
+          "notes": "RPSC official PDF URL matched to the subject on the 25 September 2025 syllabus index.",
+          "official_language": "original"
+        },
+        {
+          "id": "senior-teacher-2025-paper2-gujarati",
+          "stage": "Written",
+          "paper": "Paper II",
+          "subject": "Gujarati",
+          "edition_label": "Sr. Teacher (Sec. Edu.) Comp. Exam - 2025 • 25 Sep 2025",
+          "official_url": "https://rpsc.rajasthan.gov.in/Static/Syllabus/C5B7D571-15D1-4E84-965B-7AFA4E0E4EA0.pdf",
+          "edition_status": "current_verified",
+          "verified_at": "2026-11-06",
+          "notes": "RPSC official PDF URL matched to the subject on the 25 September 2025 syllabus index.",
+          "official_language": "original"
+        },
+        {
+          "id": "senior-teacher-2025-paper2-english",
+          "stage": "Written",
+          "paper": "Paper II",
+          "subject": "English",
+          "edition_label": "Sr. Teacher (Sec. Edu.) Comp. Exam - 2025 • 25 Sep 2025",
+          "official_url": "https://rpsc.rajasthan.gov.in/Static/Syllabus/22AD2813-84B2-4862-8A4E-0DCB78A9DA84.pdf",
+          "edition_status": "current_verified",
+          "verified_at": "2026-11-06",
+          "notes": "RPSC official PDF URL matched to the subject on the 25 September 2025 syllabus index.",
+          "official_language": "original"
         }
       ],
-      "coverage_status": "partial_verified",
-      "coverage_note": "3 of 11 Paper/Subject PDFs verified; 8 pending."
+      "coverage_status": "complete_verified",
+      "coverage_note": "11 of 11 subject/paper PDF links matched to the published 25 September 2025 syllabus index."
     },
     {
       "id": "school-lecturer",
