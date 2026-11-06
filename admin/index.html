@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="hi">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>RPSC Hub · Admin Draft Editor</title>
+<style>
+:root{font-family:system-ui,-apple-system,"Noto Sans Devanagari",sans-serif;color:#18273a;background:#f4f7fb}*{box-sizing:border-box}
+body{margin:0}header{background:#15263d;color:white;padding:18px max(16px,calc((100vw - 1100px)/2))}header h1{margin:0;font-size:1.4rem}header p{margin:4px 0 0;color:#c6d4e5}
+main{max-width:1100px;margin:20px auto;padding:0 14px}.notice{background:#fff4d8;border:1px solid #eccf84;padding:12px;border-radius:10px;margin:0 0 16px}
+.toolbar,.panel{background:white;border:1px solid #e2e8f0;border-radius:12px;padding:16px;margin-bottom:16px;box-shadow:0 1px 3px #15263d0b}
+.flex{display:flex;gap:10px;flex-wrap:wrap;align-items:center}.two{display:grid;grid-template-columns:minmax(220px,1fr) minmax(0,2fr);gap:16px}
+button,.filebtn{display:inline-block;cursor:pointer;border:1px solid #cbd5e1;background:white;border-radius:8px;padding:9px 12px;font:inherit;color:#183047}button.primary{background:#1765bb;color:white;border-color:#1765bb}button:disabled{opacity:.45;cursor:not-allowed}
+input,select,textarea{width:100%;border:1px solid #cbd5e1;border-radius:8px;padding:9px;font:inherit;background:white;color:#15263d}
+label{display:block;margin:10px 0 4px;font-size:.9rem;font-weight:600}.row{padding:10px;border-bottom:1px solid #e2e8f0;cursor:pointer}.row.active{background:#eaf3ff;border-radius:7px}.muted{color:#64748b;font-size:.85rem}
+h2{font-size:1.1rem;margin:0 0 12px}h3{font-size:1rem}fieldset{border:1px solid #e2e8f0;border-radius:9px;margin:14px 0;padding:12px}legend{font-weight:700}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 12px}.doc{padding:12px;border:1px solid #d8e3ed;border-radius:9px;margin:10px 0}
+.ok{color:#166534}.bad{color:#b91c1c}#messages{white-space:pre-wrap;line-height:1.5}small{font-size:.8rem}
+@media(max-width:750px){.two,.grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header><h1>RPSC Syllabus Hub · Admin Draft Editor</h1><p>परीक्षा, विषय, मूल PDF और स्वतंत्र हिंदी अनुवाद का संपादन</p></header>
+<main>
+<p class="notice"><strong>सुरक्षा:</strong> यह स्थानीय ड्राफ्ट एडिटर है, लॉगिन या सर्वर नहीं। यह GitHub पर सीधे बदलाव प्रकाशित नहीं करता। केवल सत्यापित बदलाव Export करके repository review में जमा करें। यहाँ GitHub token या password कभी न डालें।</p>
+<section class="toolbar">
+<div class="flex">
+<button id="load" class="primary">मौजूदा Catalog लोड करें</button>
+<label class="filebtn" for="import" style="margin:0">JSON Import करें</label><input type="file" id="import" accept=".json,application/json" hidden>
+<button id="export" disabled>ड्राफ्ट JSON डाउनलोड करें</button><button id="validate" disabled>जाँचें</button>
+</div><p id="status" class="muted" role="status">शुरू करने के लिए Catalog लोड करें या अपनी JSON फ़ाइल चुनें।</p>
+</section>
+<div class="two"><section class="panel"><h2>परीक्षाएँ</h2><div id="exams"></div><button id="addExam" disabled>+ नई परीक्षा</button><hr><h2>श्रेणियाँ</h2><div id="categories"></div><button id="addCategory" disabled>+ नई श्रेणी</button></section>
+<section class="panel"><div id="editor"><p class="muted">बाएँ से परीक्षा चुनें।</p></div></section></div>
+<section class="panel"><h2>Publish से पहले जाँच</h2><div id="messages" role="status">अभी जाँच नहीं हुई।</div><p class="muted">ड्राफ्ट → मूल PDF से विषयवार जाँच → अलग मानव समीक्षा → GitHub Pull Request → Catalog tests → Merge. Uploaded translation URL तभी जोड़ें जब Release में PDF पहले से उपलब्ध हो।</p></section>
+</main>
+<script>
+"use strict";
+const repo="yogiansh98-spec/rpsc-syllabus-hub";
+let data=null,selected=0;
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const slug=s=>String(s||"").toLowerCase().trim().replace(/[^a-z0-9-]+/g,"-").replace(/^-|-$/g,"");
+const htmlField=(label,value,path,type="text")=>'<label>'+esc(label)+'</label><input data-field="'+esc(path)+'" type="'+type+'" value="'+esc(value)+'">';
+const htmlArea=(label,value,path)=>'<label>'+esc(label)+'</label><textarea rows="2" data-field="'+esc(path)+'">'+esc(value)+'</textarea>';
+const status=t=>$("status").textContent=t;
+function init(obj){if(!obj||obj.schema_version!==2||!Array.isArray(obj.exams)||!Array.isArray(obj.exam_categories))throw Error("schema_version=2, exams और exam_categories जरूरी हैं");data=structuredClone(obj);selected=0;["export","validate","addExam","addCategory"].forEach(x=>$(x).disabled=false);render();status("Catalog ड्राफ्ट लोड हुआ — कोई बदलाव प्रकाशित नहीं हुआ।")}
+$("load").onclick=async()=>{try{status("लोड हो रहा है…");const r=await fetch("https://raw.githubusercontent.com/"+repo+"/main/catalog/catalog.json",{cache:"no-store"});if(!r.ok)throw Error("HTTP "+r.status);init(await r.json())}catch(e){status("लोड विफल: "+e.message+" — JSON Import इस्तेमाल करें।")}};
+$("import").onchange=async e=>{const f=e.target.files[0];if(!f)return;try{init(JSON.parse(await f.text()))}catch(err){status("गलत JSON: "+err.message)}e.target.value=""};
+function render(){if(!data)return; $("exams").innerHTML=data.exams.map((e,i)=>'<div class="row '+(i===selected?"active":"")+'" data-index="'+i+'"><b>'+esc(e.name_hi||e.id)+'</b><div class="muted">'+esc(e.status)+" · "+(e.documents||[]).length+" दस्तावेज़</div></div>").join("");
+$("categories").innerHTML=data.exam_categories.map((c,i)=>'<div class="row"><input aria-label="श्रेणी शीर्षक" data-category="'+i+'" value="'+esc(c.title)+'"><small class="muted">'+esc(c.id)+'</small></div>').join("");
+$("exams").querySelectorAll("[data-index]").forEach(x=>x.onclick=()=>{selected=+x.dataset.index;render()});
+$("categories").querySelectorAll("[data-category]").forEach(x=>x.onchange=()=>{data.exam_categories[+x.dataset.category].title=x.value.trim();render()});
+renderEditor();
+}
+function renderEditor(){const e=data.exams[selected];if(!e){$("editor").innerHTML="कोई परीक्षा नहीं";return}
+let h='<h2>'+esc(e.name_hi||e.id)+'</h2><div class="grid">'+htmlField("ID (स्थिर)",e.id,"id")+htmlField("हिंदी नाम",e.name_hi,"name_hi")+htmlField("अंग्रेज़ी नाम",e.name_en,"name_en")+
+'<div><label>श्रेणी</label><select data-field="category">'+data.exam_categories.map(c=>'<option value="'+esc(c.id)+'" '+(c.id===e.category?"selected":"")+'>'+esc(c.title)+'</option>').join("")+'</select></div>'+
+'<div><label>स्थिति</label><select data-field="status"><option value="planned" '+(e.status==="planned"?"selected":"")+'>Draft / Planned</option><option value="published" '+(e.status==="published"?"selected":"")+'>Published (review required)</option></select></div></div>'+
+'<div class="grid">'+htmlArea("विषय (कॉमा से अलग)",(e.subjects||[]).join(", "),"subjects")+htmlArea("Post",(e.post||[]).join(", "),"post")+htmlArea("Department",(e.department||[]).join(", "),"department")+htmlArea("हिंदी वैकल्पिक नाम",(e.aliases_hi||[]).join(", "),"aliases_hi")+htmlArea("English aliases",(e.aliases_en||[]).join(", "),"aliases_en")+'</div>'+
+'<label>Coverage</label><select data-field="coverage_status">'+["not_applicable","unknown","partial_verified","complete_verified"].map(s=>'<option '+(e.coverage_status===s?"selected":"")+'>'+s+'</option>').join("")+'</select>'+
+htmlArea("Coverage note",e.coverage_note||"","coverage_note")+'<h3>PDF दस्तावेज़</h3>';
+(e.documents||[]).forEach((d,i)=>{const p="doc:"+i+":";h+='<fieldset class="doc"><legend>'+esc(d.subject||"New PDF")+'</legend><div class="grid">'+htmlField("Document ID",d.id,p+"id")+htmlField("विषय",d.subject,p+"subject")+htmlField("Paper",d.paper,p+"paper")+htmlField("Stage",d.stage,p+"stage")+htmlField("Edition label",d.edition_label,p+"edition_label")+htmlField("RPSC verified date",d.verified_at||"",p+"verified_at","date")+'</div>'+
+htmlField("Official RPSC PDF URL",d.official_url||"",p+"official_url","url")+
+'<label>Original PDF भाषा</label><select data-field="'+p+'official_language">'+["original","hi","en","mixed"].map(s=>'<option '+((d.official_language||"original")===s?"selected":"")+'>'+s+'</option>').join("")+'</select>'+
+htmlField("Hindi translation Release URL (optional)",d.translation_hi_url||"",p+"translation_hi_url","url")+
+htmlField("Translation label",d.translation_hi_label||"",p+"translation_hi_label")+
+'<label>Verification status</label><select data-field="'+p+'edition_status"><option value="draft" '+(d.edition_status!=="current_verified"?"selected":"")+'>Draft — NOT publishable</option><option value="current_verified" '+(d.edition_status==="current_verified"?"selected":"")+'>Current verified</option></select>'+
+'<button type="button" data-remove="'+i+'">Remove PDF</button></fieldset>'});
+h+='<button id="newDoc">+ नई PDF (Draft)</button> <button id="removeExam">परीक्षा हटाएँ</button>';
+$("editor").innerHTML=h;
+$("editor").querySelectorAll("[data-field]").forEach(x=>x.onchange=()=>{const k=x.dataset.field;if(k.startsWith("doc:")){const a=k.split(":");e.documents[+a[1]][a[2]]=x.value}else if(["subjects","post","department","aliases_hi","aliases_en"].includes(k))e[k]=x.value.split(",").map(s=>s.trim()).filter(Boolean);else e[k]=x.value;render()});
+$("editor").querySelectorAll("[data-remove]").forEach(x=>x.onclick=()=>{if(confirm("यह दस्तावेज़ ड्राफ्ट से हटाएँ?")){e.documents.splice(+x.dataset.remove,1);render()}});
+$("newDoc").onclick=()=>{e.documents.push({id:"new-pdf-"+Date.now(),stage:"Written",paper:"Paper II",subject:"",edition_label:"",official_url:"",edition_status:"draft",verified_at:"",official_language:"original"});render()};
+$("removeExam").onclick=()=>{if(confirm("पूरी परीक्षा ड्राफ्ट से हटाएँ?")){data.exams.splice(selected,1);selected=0;render()}};
+}
+$("addExam").onclick=()=>{const id=prompt("नई परीक्षा का unique English ID (जैसे new-exam):");if(!id)return;const s=slug(id);if(!/^[a-z0-9-]{2,40}$/.test(s)||data.exams.some(e=>e.id===s)){alert("गलत या duplicate ID");return}data.exams.push({id:s,name_hi:s,name_en:s,category:"other",status:"planned",aliases_hi:[],aliases_en:[],post:[],department:[],subjects:[],documents:[]});selected=data.exams.length-1;render()};
+$("addCategory").onclick=()=>{const id=prompt("नई श्रेणी का unique English ID:");if(!id)return;const s=slug(id);if(!/^[a-z0-9-]{2,40}$/.test(s)||["all","more"].includes(s)||data.exam_categories.some(c=>c.id===s)){alert("गलत या duplicate ID");return}const title=prompt("श्रेणी का नाम:");if(!title||!title.trim())return;data.exam_categories.push({id:s,title:title.trim()});render()};
+function valid(){const errors=[],warn=[],unique=(vals,label)=>{const seen=new Set;vals.forEach(v=>{if(!v||seen.has(v))errors.push(label+" duplicate/empty: "+v);seen.add(v)})};
+if(data.schema_version!==2)errors.push("Schema 2 चाहिए");if(!data.exam_categories.some(c=>c.id==="other"))errors.push("other श्रेणी जरूरी है");
+if(data.exam_categories.length>60)errors.push("60 से अधिक categories");unique(data.exam_categories.map(c=>c.id),"Category ID");unique(data.exams.map(e=>e.id),"Exam ID");const docids=[],urls=[];
+for(const e of data.exams){if(!data.exam_categories.some(c=>c.id===e.category))errors.push(e.id+": invalid category");
+if(!e.name_hi||!e.name_en)errors.push(e.id+": दोनों नाम जरूरी");
+if(e.status==="planned"&&e.documents.length)errors.push(e.id+": planned के साथ PDF नहीं जोड़ सकते; publish से पहले प्रत्येक PDF की समीक्षा करें");
+if(e.status==="published"&&!e.documents.length)errors.push(e.id+": published में PDF जरूरी है");
+if(e.status==="published"&&e.coverage_status==="not_applicable")errors.push(e.id+": coverage status ठीक करें");
+for(const d of e.documents){docids.push(d.id);if(!d.subject||!d.stage||!d.paper||!d.edition_label)errors.push(d.id+": subject/paper/stage/edition missing");
+if(d.edition_status!=="current_verified")errors.push(d.id+": PDF Draft है, publish नहीं हो सकता");
+if(!/^\d{4}-\d{2}-\d{2}$/.test(d.verified_at||""))errors.push(d.id+": verification date missing");
+if(!/^https:\/\/rpsc\.rajasthan\.gov\.in\/Static\/Syllabus\/[^?#]+\.pdf$/i.test(d.official_url||""))errors.push(d.id+": official RPSC PDF URL गलत");
+if(d.official_url)urls.push(d.official_url);
+if(d.translation_hi_url){if(!/^https:\/\/github\.com\/yogiansh98-spec\/rpsc-syllabus-hub\/releases\/download\/[A-Za-z0-9._-]+\/[A-Za-z0-9._-]+\.pdf$/.test(d.translation_hi_url))errors.push(d.id+": Hindi PDF Release URL गलत");urls.push(d.translation_hi_url);warn.push(d.id+": Hindi PDF का वास्तविक upload, अनुवाद और proofreading मानव द्वारा पुष्टि करें")}
+}}
+unique(docids,"Document ID");unique(urls,"PDF URL");
+warn.push("JSON validation वास्तविक RPSC PDF content verification नहीं है। Review/CI बिना publish न करें।");
+return {errors,warn}
+}
+$("validate").onclick=()=>{const v=valid();$("messages").innerHTML=(v.errors.length?'<b class="bad">FAIL — '+v.errors.length+' समस्याएँ</b>':'<b class="ok">Structural checks PASS</b>')+"\n"+esc([...v.errors,...v.warn].map((s,i)=>(i+1)+". "+s).join("\n"))};
+$("export").onclick=()=>{const v=valid();if(v.errors.length){$("validate").click();alert("त्रुटियाँ ठीक किए बिना Export नहीं होगा।");return}
+const d=structuredClone(data);d.catalog_version=(Number(d.catalog_version)||0)+1;d.published_at=new Date().toISOString().replace(/\.\d{3}Z$/,"Z");const blob=new Blob([JSON.stringify(d,null,2)+"\n"],{type:"application/json"}),url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download="catalog-draft-v"+d.catalog_version+".json";a.click();setTimeout(()=>URL.revokeObjectURL(url),30000);status("ड्राफ्ट डाउनलोड हुआ। GitHub में Pull Request और CI जाँच अभी बाकी है।")};
+</script></body></html>
