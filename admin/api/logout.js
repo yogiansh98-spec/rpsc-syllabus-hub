@@ -1,0 +1,1 @@
+const {config,clear,originOK,method,fail}=require("./_lib");module.exports=(req,res)=>{if(!method(req,res,"POST"))return;let c;try{c=config()}catch{return fail(res,503,"Not configured")};if(!originOK(req,c.origin))return fail(res,403,"Invalid origin");res.setHeader("Set-Cookie",clear("rpsc_admin"));res.json({ok:true});};
