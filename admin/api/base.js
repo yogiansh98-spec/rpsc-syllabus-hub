@@ -1,0 +1,2 @@
+const {auth,gh,REPO,method,fail}=require("./_lib");
+module.exports=async(req,res)=>{if(!method(req,res,"GET"))return;const a=await auth(req,res);if(!a)return;try{const f=await gh(a.token,"/repos/"+REPO+"/contents/catalog/catalog.json?ref=main");const d=JSON.parse(Buffer.from(f.content.replace(/\s/g,""),"base64").toString("utf8"));res.setHeader("Cache-Control","no-store");res.json({sha:f.sha,version:d.catalog_version});}catch(e){fail(res,502,"Cannot verify main catalog: "+e.message)}};
