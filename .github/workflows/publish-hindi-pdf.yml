@@ -1,0 +1,24 @@
+name: Publish Hindi PDF
+on:
+  push:
+    branches: [main]
+    paths:
+      - "syllabus/hindi/**"
+      - ".github/workflows/publish-hindi-pdf.yml"
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify and attach translated PDF
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          FILE="syllabus/hindi/RPSC_2nd_Grade_2025_GK_Paper1_Hindi.pdf"
+          test -s "$FILE"
+          test "$(head -c 4 "$FILE")" = "%PDF"
+          gh release upload v0.7.0-multilingual-test "$FILE#RPSC_2nd_Grade_2025_GK_Paper1_Hindi.pdf" --clobber
