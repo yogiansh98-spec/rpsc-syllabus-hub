@@ -1,0 +1,1 @@
+const {auth,method}=require("./_lib");module.exports=async(req,res)=>{if(!method(req,res,"GET"))return;const a=await auth(req,res);if(!a)return;res.setHeader("Cache-Control","no-store");res.json({loggedIn:true,user:a.user.login,avatar:a.user.avatar_url});};
