@@ -1,8 +1,8 @@
 {
   "schema_version": 2,
-  "catalog_version": 5,
-  "published_at": "2026-11-04T09:30:00Z",
-  "catalog_note": "Dynamic exam categories from online JSON; 3 verified Senior Teacher syllabus PDFs currently available, 8 subjects pending audit.",
+  "catalog_version": 6,
+  "published_at": "2026-11-06T12:00:00Z",
+  "catalog_note": "Multilingual PDF-ready catalog; Senior Teacher 2025 remains partial with 3 verified official PDFs; other eight paper/subject documents pending verification.",
   "exams": [
     {
       "id": "ras",
@@ -80,7 +80,8 @@
           "official_url": "https://rpsc.rajasthan.gov.in/Static/Syllabus/0146A331-A4EE-4F82-A9EF-5A7A7CF7760A.pdf",
           "edition_status": "current_verified",
           "verified_at": "2026-11-04",
-          "notes": "Senior Teacher Secondary Education 2025; official RPSC PDF. Other subjects pending PDF verification."
+          "notes": "Senior Teacher Secondary Education 2025; official RPSC PDF. Other subjects pending PDF verification.",
+          "official_language": "en"
         },
         {
           "id": "senior-teacher-2025-paper2-hindi",
@@ -91,7 +92,8 @@
           "official_url": "https://rpsc.rajasthan.gov.in/Static/Syllabus/345FC0C2-BA97-454A-BDA7-6C5C4CAF0D11.pdf",
           "edition_status": "current_verified",
           "verified_at": "2026-11-04",
-          "notes": "Senior Teacher Secondary Education 2025; official RPSC PDF. Other subjects pending PDF verification."
+          "notes": "Senior Teacher Secondary Education 2025; official RPSC PDF. Other subjects pending PDF verification.",
+          "official_language": "hi"
         },
         {
           "id": "senior-teacher-2025-paper2-social-science",
@@ -104,7 +106,9 @@
           "verified_at": "2026-11-04",
           "notes": "Senior Teacher Secondary Education 2025; official RPSC PDF. Other subjects pending PDF verification."
         }
-      ]
+      ],
+      "coverage_status": "partial_verified",
+      "coverage_note": "3 of 11 Paper/Subject PDFs verified; 8 pending."
     },
     {
       "id": "school-lecturer",

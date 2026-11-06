@@ -31,6 +31,10 @@ for e in data['exams']:
         assert isinstance(e.get(key),str) and e[key].strip(), f'{e["id"]}: {key} missing'
     for key in ('aliases_hi','aliases_en','post','department','subjects','documents'):
         assert isinstance(e.get(key),list), f'{e["id"]}: {key} must be list'
+    coverage=e.get('coverage_status','unknown' if e['status']=='published' else 'not_applicable')
+    assert coverage in ('unknown','partial_verified','complete_verified','not_applicable'), 'bad coverage'
+    assert e['status']!='published' or coverage!='not_applicable', 'published status requires coverage'
+    assert isinstance(e.get('coverage_note',''),str) and len(e.get('coverage_note',''))<=350, 'invalid coverage note'
     docs=e['documents']
     assert not docs if e['status']=='planned' else bool(docs), f'{e["id"]}: status/docs conflict'
     for d in docs:
@@ -40,6 +44,13 @@ for e in data['exams']:
         assert re.fullmatch(r'\d{4}-\d{2}-\d{2}',d.get('verified_at',''))
         for k in ('stage','paper','subject','edition_label'):
             assert isinstance(d.get(k),str) and d[k].strip(), f'{d["id"]}: missing {k}'
+        assert d.get('official_language','original') in ('original','en','hi','mixed'), 'invalid original language'
+        translated=d.get('translation_hi_url','')
+        if translated:
+            tu=urlsplit(translated)
+            assert tu.scheme=='https' and tu.netloc=='github.com' and not tu.query and not tu.fragment and re.fullmatch(r'/yogiansh98-spec/rpsc-syllabus-hub/releases/download/[A-Za-z0-9._-]+/[A-Za-z0-9._-]+\.pdf',tu.path), 'Invalid Hindi PDF host'
+            assert translated not in urls, 'duplicate translated URL'
+            urls.add(translated)
         u=urlsplit(d.get('official_url',''))
         assert u.scheme=='https' and u.hostname=='rpsc.rajasthan.gov.in' and u.path.lower().startswith('/static/syllabus/') and u.path.lower().endswith('.pdf') and not u.username and not u.password and not u.fragment, 'Not official RPSC PDF URL'
         assert d['official_url'] not in urls, 'duplicate PDF URL'

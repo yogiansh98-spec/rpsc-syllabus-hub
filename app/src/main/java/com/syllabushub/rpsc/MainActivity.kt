@@ -50,6 +50,8 @@ private data class SyllabusDocument(
     val subject: String,
     val edition: String,
     val officialUrl: String,
+    val officialLanguage: String,
+    val translationHiUrl: String,
     val notes: String
 )
 
@@ -60,6 +62,8 @@ private data class Exam(
     val category: String,
     val keywords: List<String>,
     val status: String,
+    val coverageStatus: String,
+    val coverageNote: String,
     val documents: List<SyllabusDocument>
 )
 
@@ -135,6 +139,19 @@ private fun readExplore(text: String): List<ExploreItem> {
 
 private data class DownloadRecord(val requestId: Long, val documentId: String, val title: String)
 
+private fun pdfKey(doc: SyllabusDocument, hindi: Boolean) =
+    if (hindi) "${doc.id}::hi" else doc.id
+
+private fun pdfUrl(doc: SyllabusDocument, hindi: Boolean) =
+    if (hindi) doc.translationHiUrl else doc.officialUrl
+
+private fun allowedTranslationUrl(url: String): Boolean {
+    val uri = Uri.parse(url)
+    return uri.scheme == "https" && uri.authority == "github.com" &&
+        Regex("^/yogiansh98-spec/rpsc-syllabus-hub/releases/download/[A-Za-z0-9._-]+/[A-Za-z0-9._-]+\\.pdf$")
+            .matches(uri.path.orEmpty()) && uri.query == null && uri.fragment == null
+}
+
 private fun readCatalog(text: String, categories: List<ExamCategory>): List<Exam> {
     val root = JSONObject(text)
     require(root.getInt("schema_version") == 2) { "Unsupported catalog" }
@@ -159,6 +176,11 @@ private fun readCatalog(text: String, categories: List<ExamCategory>): List<Exam
             }
             val status = exam.getString("status")
             require(status == "planned" || status == "published") { "Invalid exam status" }
+            val coverageStatus = exam.optString("coverage_status", if (status == "published") "unknown" else "not_applicable")
+            require(coverageStatus in listOf("unknown", "partial_verified", "complete_verified", "not_applicable")) { "Invalid coverage status" }
+            require(status != "published" || coverageStatus != "not_applicable") { "Published exam needs coverage status" }
+            val coverageNote = exam.optString("coverage_note")
+            require(coverageNote.length <= 350) { "Coverage note too long" }
             val pdfs = exam.getJSONArray("documents")
             val documents = buildList {
                 for (j in 0 until pdfs.length()) {
@@ -172,23 +194,28 @@ private fun readCatalog(text: String, categories: List<ExamCategory>): List<Exam
                     require(uri.scheme == "https" && uri.host == "rpsc.rajasthan.gov.in" &&
                         uri.path.orEmpty().startsWith("/Static/Syllabus/", ignoreCase = true) &&
                         uri.path.orEmpty().endsWith(".pdf", ignoreCase = true)) { "Non-official PDF URL" }
+                    val hiUrl = doc.optString("translation_hi_url")
+                    require(hiUrl.isBlank() || allowedTranslationUrl(hiUrl)) { "Bad independent Hindi PDF URL" }
+                    val officialLanguage = doc.optString("official_language", "original")
+                    require(officialLanguage in listOf("original", "en", "hi", "mixed")) { "Bad original language" }
                     add(SyllabusDocument(
                         documentId, doc.optString("stage"), doc.optString("paper"),
                         doc.optString("subject"), doc.getString("edition_label"), pdfUrl,
-                        doc.optString("notes")
+                        officialLanguage, hiUrl, doc.optString("notes")
                     ))
                 }
             }
             require(status != "published" || documents.isNotEmpty()) { "Published exam has no verified PDF" }
             require(status != "planned" || documents.isEmpty()) { "Unpublished exam has a PDF" }
             add(Exam(id, exam.getString("name_hi"), exam.getString("name_en"),
-                exam.getString("category"), words, status, documents))
+                exam.getString("category"), words, status, coverageStatus, coverageNote, documents))
         }
     }
     return parsed
 }
 
 private data class CatalogSnapshot(
+    val version: Int,
     val exams: List<Exam>,
     val categories: List<ExamCategory>,
     val explore: List<ExploreItem>
@@ -196,18 +223,19 @@ private data class CatalogSnapshot(
 
 private fun readSnapshot(text: String): CatalogSnapshot {
     val categories = readExamCategories(text)
-    return CatalogSnapshot(readCatalog(text, categories), categories, readExplore(text))
+    val version = JSONObject(text).getInt("catalog_version")
+    require(version >= 1) { "Invalid catalog version" }
+    return CatalogSnapshot(version, readCatalog(text, categories), categories, readExplore(text))
 }
 
 private class CatalogStore(private val context: Context) {
     private val cached = File(context.filesDir, "catalog_cache.json")
     fun load(): CatalogSnapshot {
         val bundled = context.assets.open("catalog.json").bufferedReader().use { it.readText() }
-        val cachedText = runCatching { cached.readText() }.getOrNull()
-        if (cachedText != null) {
-            runCatching { readSnapshot(cachedText) }.getOrNull()?.let { return it }
-        }
-        return readSnapshot(bundled)
+        val bundledSnapshot = readSnapshot(bundled)
+        val cachedSnapshot = runCatching { readSnapshot(cached.readText()) }.getOrNull()
+        return if (cachedSnapshot != null && cachedSnapshot.version >= bundledSnapshot.version)
+            cachedSnapshot else bundledSnapshot
     }
     fun refresh(onSuccess: (CatalogSnapshot) -> Unit) {
         val url = BuildConfig.CATALOG_URL
@@ -233,6 +261,7 @@ private class CatalogStore(private val context: Context) {
                     require(bytes.size <= 2_000_000) { "Catalog too big" }
                     val json = bytes.toString(Charsets.UTF_8)
                     val snapshot = readSnapshot(json) // validate all sections before saving
+                    if (snapshot.version <= load().version) return@runCatching null
                     val tmp = File(context.filesDir, "catalog_cache.tmp")
                     tmp.writeText(json)
                     if (!tmp.renameTo(cached)) { tmp.copyTo(cached, overwrite = true); tmp.delete() }
@@ -280,16 +309,19 @@ private fun openOfficialPdf(context: Context, url: String) {
         .onFailure { Toast.makeText(context, "PDF खोलने के लिए Browser उपलब्ध नहीं है", Toast.LENGTH_LONG).show() }
 }
 
-private fun startDownload(context: Context, doc: SyllabusDocument): DownloadRecord? = runCatching {
+private fun startDownload(context: Context, doc: SyllabusDocument, hindi: Boolean = false): DownloadRecord? = runCatching {
+    val url = pdfUrl(doc, hindi)
+    require(url.isNotBlank()) { "PDF URL is missing" }
     val manager = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
-    val request = DownloadManager.Request(Uri.parse(doc.officialUrl))
-        .setTitle("RPSC • ${doc.subject.ifBlank { doc.paper }}")
-        .setDescription("Official syllabus PDF")
+    val request = DownloadManager.Request(Uri.parse(url))
+        .setTitle("${if (hindi) "Hindi Translation" else "RPSC Original"} • ${doc.subject.ifBlank { doc.paper }}")
+        .setDescription(if (hindi) "Independent Hindi translation; not official RPSC Hindi publication" else "Official RPSC syllabus PDF")
         .setMimeType("application/pdf")
         .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
-        .setDestinationInExternalFilesDir(context, Environment.DIRECTORY_DOWNLOADS, "${doc.id}.pdf")
+        .setDestinationInExternalFilesDir(context, Environment.DIRECTORY_DOWNLOADS, "${doc.id}${if (hindi) "-hi" else "-original"}.pdf")
     val id = manager.enqueue(request)
-    DownloadRecord(id, doc.id, "${doc.subject.ifBlank { doc.paper }} — ${doc.edition}")
+    DownloadRecord(id, pdfKey(doc, hindi),
+        "${doc.subject.ifBlank { doc.paper }} — ${if (hindi) "Hindi translation" else "RPSC Original"} — ${doc.edition}")
 }.onFailure {
     Toast.makeText(context, "डाउनलोड शुरू नहीं हुआ: ${it.localizedMessage}", Toast.LENGTH_LONG).show()
 }.getOrNull()
@@ -345,7 +377,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             var snapshot by remember {
                 mutableStateOf(runCatching { catalogStore.load() }
-                    .getOrElse { CatalogSnapshot(emptyList(), legacyExamCategories, emptyList()) })
+                    .getOrElse { CatalogSnapshot(0, emptyList(), legacyExamCategories, emptyList()) })
             }
             val exams = snapshot.exams
             val exploreItems = snapshot.explore
@@ -437,17 +469,23 @@ class MainActivity : ComponentActivity() {
                                             bookmarks = if (selected.id in bookmarks) bookmarks - selected.id else bookmarks + selected.id
                                             putBookmarks(this@MainActivity, bookmarks)
                                         },
-                                        onOpen = { openOfficialPdf(this@MainActivity, it.officialUrl) },
-                                        onDownload = { doc ->
-                                            val existing = downloads.filter { it.documentId == doc.id }
-                                            existing.forEach { record ->
-                                                (getSystemService(DOWNLOAD_SERVICE) as DownloadManager).remove(record.requestId)
-                                            }
-                                            val made = startDownload(this@MainActivity, doc)
-                                            if (made != null) {
-                                                downloads = downloads.filterNot { it.documentId == doc.id } + made
-                                                putDownloads(this@MainActivity, downloads)
-                                                Toast.makeText(this@MainActivity, "डाउनलोड शुरू हुआ", Toast.LENGTH_SHORT).show()
+                                        onOpen = { doc, hindi -> openOfficialPdf(this@MainActivity, pdfUrl(doc, hindi)) },
+                                        onDownload = { doc, hindi ->
+                                            val key = pdfKey(doc, hindi)
+                                            val existing = downloads.firstOrNull { it.documentId == key }
+                                            val current = existing?.let { queryDownload(this@MainActivity, it) }
+                                            if (current?.complete == true && current.uri != null) {
+                                                openDownloadedPdf(this@MainActivity, current.uri)
+                                            } else if (current?.label in listOf("Downloading…", "Paused", "Pending")) {
+                                                Toast.makeText(this@MainActivity, "डाउनलोड पहले से जारी है", Toast.LENGTH_SHORT).show()
+                                            } else {
+                                                val made = startDownload(this@MainActivity, doc, hindi)
+                                                if (made != null) {
+                                                    existing?.let { (getSystemService(DOWNLOAD_SERVICE) as DownloadManager).remove(it.requestId) }
+                                                    downloads = downloads.filterNot { it.documentId == key } + made
+                                                    putDownloads(this@MainActivity, downloads)
+                                                    Toast.makeText(this@MainActivity, "डाउनलोड शुरू हुआ", Toast.LENGTH_SHORT).show()
+                                                }
                                             }
                                         }
                                     )
@@ -465,11 +503,13 @@ class MainActivity : ComponentActivity() {
                                     onRefresh = { downloadRefresh++ },
                                     onOpen = { openDownloadedPdf(this@MainActivity, it) },
                                     onRetry = { record ->
-                                        val doc = exams.flatMap { it.documents }.firstOrNull { it.id == record.documentId }
-                                        if (doc == null) {
+                                        val hindi = record.documentId.endsWith("::hi")
+                                        val docId = record.documentId.removeSuffix("::hi")
+                                        val doc = exams.flatMap { it.documents }.firstOrNull { it.id == docId }
+                                        if (doc == null || (hindi && doc.translationHiUrl.isBlank())) {
                                             Toast.makeText(this@MainActivity, "PDF अभी catalog में उपलब्ध नहीं है", Toast.LENGTH_LONG).show()
                                         } else {
-                                            val made = startDownload(this@MainActivity, doc)
+                                            val made = startDownload(this@MainActivity, doc, hindi)
                                             if (made != null) {
                                                 (getSystemService(DOWNLOAD_SERVICE) as DownloadManager).remove(record.requestId)
                                                 downloads = downloads.map { if (it.requestId == record.requestId) made else it }
@@ -892,8 +932,8 @@ private fun paperLabelRank(paper: String): Int = when (paper) {
 @Composable
 private fun ExamScreen(
     exam: Exam, bookmarked: Boolean, onBack: () -> Unit,
-    onBookmark: () -> Unit, onOpen: (SyllabusDocument) -> Unit,
-    onDownload: (SyllabusDocument) -> Unit
+    onBookmark: () -> Unit, onOpen: (SyllabusDocument, Boolean) -> Unit,
+    onDownload: (SyllabusDocument, Boolean) -> Unit
 ) {
     var subjectQuery by rememberSaveable(exam.id) { mutableStateOf("") }
     val ordered = remember(exam, subjectQuery) {
@@ -921,6 +961,15 @@ private fun ExamScreen(
                 Spacer(Modifier.width(8.dp)); Text(if (bookmarked) "Saved in Bookmarks" else "Save Exam")
             }
             Spacer(Modifier.height(8.dp))
+            if (exam.status == "published" && exam.coverageStatus != "complete_verified") {
+                Text(
+                    if (exam.coverageStatus == "partial_verified") "Partial syllabus coverage • ${exam.coverageNote}"
+                    else "Verified PDFs are available; complete syllabus coverage is not confirmed.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.secondary
+                )
+                Spacer(Modifier.height(6.dp))
+            }
             OutlinedTextField(
                 value = subjectQuery, onValueChange = { subjectQuery = it },
                 placeholder = { Text("इस परीक्षा में Subject / Paper खोजें") },
@@ -958,17 +1007,37 @@ private fun ExamScreen(
                         Text(doc.subject, fontWeight = FontWeight.SemiBold)
                         Text(doc.edition, style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.secondary)
+                        Text(when (doc.officialLanguage) {
+                            "en" -> "RPSC Original • English"
+                            "hi" -> "RPSC Original • हिंदी"
+                            else -> "RPSC Original"
+                        }, style = MaterialTheme.typography.labelSmall)
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Button(onClick = { onOpen(doc) }, modifier = Modifier.weight(1f)) {
+                            Button(onClick = { onOpen(doc, false) }, modifier = Modifier.weight(1f)) {
                                 Icon(Icons.Filled.OpenInNew, contentDescription = null, modifier = Modifier.size(16.dp))
                                 Spacer(Modifier.width(6.dp)); Text("Open", maxLines = 1)
                             }
-                            OutlinedButton(onClick = { onDownload(doc) }, modifier = Modifier.weight(1f)) {
+                            OutlinedButton(onClick = { onDownload(doc, false) }, modifier = Modifier.weight(1f)) {
                                 Icon(Icons.Filled.Download, contentDescription = null, modifier = Modifier.size(16.dp))
                                 Spacer(Modifier.width(6.dp)); Text("Download", maxLines = 1)
                             }
                         }
                         Text("Source: rpsc.rajasthan.gov.in", style = MaterialTheme.typography.labelSmall)
+                        if (doc.translationHiUrl.isNotBlank()) {
+                            HorizontalDivider()
+                            Text("हिंदी PDF • स्वतंत्र अनुवाद; RPSC का आधिकारिक हिंदी प्रकाशन नहीं",
+                                style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Button(onClick = { onOpen(doc, true) }, modifier = Modifier.weight(1f)) {
+                                    Icon(Icons.Filled.OpenInNew, contentDescription = null, modifier = Modifier.size(16.dp))
+                                    Spacer(Modifier.width(5.dp)); Text("हिंदी खोलें", maxLines = 1)
+                                }
+                                OutlinedButton(onClick = { onDownload(doc, true) }, modifier = Modifier.weight(1f)) {
+                                    Icon(Icons.Filled.Download, contentDescription = null, modifier = Modifier.size(16.dp))
+                                    Spacer(Modifier.width(5.dp)); Text("डाउनलोड", maxLines = 1)
+                                }
+                            }
+                        }
                     }
                 }
             }

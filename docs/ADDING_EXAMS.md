@@ -47,3 +47,10 @@ App downloads official documents directly to the user's device. It does not host
 - Increment `catalog_version`, update `published_at`, validate using `python3 scripts/test_catalog.py`, then publish JSON to GitHub main. The v0.6+ app pulls it at resume without a new APK.
 - Do not change Kotlin code just to add a category. Do not add a category only to `explore_categories`, which controls a different UI tab.
 - Older v0.5.3 clients do not understand categories outside the legacy 10; upgrade once to v0.6.
+
+## v0.7: Multilingual PDFs and source distinction
+- Keep the original official RPSC PDF in `official_url`. Use optional `official_language` (`en`, `hi`, `mixed`, `original`) for the **document language**, not the school subject.
+- Add `translation_hi_url` only after uploading and verifying the independent Hindi PDF on a GitHub release. The app checks the repository's HTTPS release URL pattern, and labels the translation **not officially published by RPSC**.
+- Both variants are shown under the same syllabus paper, use distinct download keys, and can be updated through the remote catalog without another APK.
+- For partial published exams, supply `coverage_status: partial_verified` and `coverage_note` stating missing papers.
+- Increment `catalog_version` with every content update; v0.7 prevents a lower-version remote catalog from overwriting a newer valid cache.
