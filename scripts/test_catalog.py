@@ -13,13 +13,13 @@ assert original==json.loads(Path('app/src/main/assets/catalog.json').read_text(e
 assert len(original['exams'])==5
 assert sum(e['status']=='published' for e in original['exams'])==1
 assert sum(e['status']=='planned' for e in original['exams'])==4
-assert len(next(e for e in original['exams'] if e['id']=='senior-teacher')['documents'])==3
+assert len(next(e for e in original['exams'] if e['id']=='senior-teacher')['documents'])==11
 assert [e['category'] for e in original['exams']].count('teaching')==3
 assert [e['category'] for e in original['exams']].count('administrative')==1
 assert [e['category'] for e in original['exams']].count('engineering')==1
 assert len(original['exam_categories'])==10
 senior=next(e for e in original['exams'] if e['id']=='senior-teacher')
-assert senior['coverage_status']=='partial_verified'
+assert senior['coverage_status']=='complete_verified'
 assert senior['documents'][0]['official_language']=='en'
 bilingual=copy.deepcopy(original)
 bilingual['exams'][1]['documents'][0]['translation_hi_url']='https://github.com/yogiansh98-spec/rpsc-syllabus-hub/releases/download/v0.7.0-multilingual-test/SeniorTeacher_GK_Hindi.pdf'
