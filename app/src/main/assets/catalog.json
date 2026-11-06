@@ -1,8 +1,8 @@
 {
   "schema_version": 2,
-  "catalog_version": 6,
-  "published_at": "2026-11-06T12:00:00Z",
-  "catalog_note": "Multilingual PDF-ready catalog; Senior Teacher 2025 remains partial with 3 verified official PDFs; other eight paper/subject documents pending verification.",
+  "catalog_version": 7,
+  "published_at": "2026-11-06T13:45:00Z",
+  "catalog_note": "Senior Teacher 2025 GK Paper I: independently translated Hindi PDF available alongside official RPSC English; 8 other papers/subjects pending verification.",
   "exams": [
     {
       "id": "ras",
@@ -80,8 +80,9 @@
           "official_url": "https://rpsc.rajasthan.gov.in/Static/Syllabus/0146A331-A4EE-4F82-A9EF-5A7A7CF7760A.pdf",
           "edition_status": "current_verified",
           "verified_at": "2026-11-04",
-          "notes": "Senior Teacher Secondary Education 2025; official RPSC PDF. Other subjects pending PDF verification.",
-          "official_language": "en"
+          "notes": "Official RPSC English PDF. Independent Hindi translation is separate and is not an official RPSC publication.",
+          "official_language": "en",
+          "translation_hi_url": "https://github.com/yogiansh98-spec/rpsc-syllabus-hub/releases/download/v0.7.0-multilingual-test/RPSC_2nd_Grade_2025_GK_Paper1_Hindi.pdf"
         },
         {
           "id": "senior-teacher-2025-paper2-hindi",
