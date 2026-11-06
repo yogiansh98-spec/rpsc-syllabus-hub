@@ -1,0 +1,4 @@
+const crypto=require("node:crypto");const {config,cookie,fail,method}=require("./_lib");
+module.exports=(req,res)=>{if(!method(req,res,"GET"))return;let c;try{c=config()}catch{return fail(res,503,"GitHub Login requires server-side setup");}
+const state=crypto.randomBytes(24).toString("hex");res.setHeader("Set-Cookie",cookie("rpsc_oauth_state",state,600));res.setHeader("Cache-Control","no-store");
+const u=new URL("https://github.com/login/oauth/authorize");u.searchParams.set("client_id",c.clientId);u.searchParams.set("redirect_uri",c.origin+"/api/callback");u.searchParams.set("scope","public_repo");u.searchParams.set("state",state);res.redirect(302,u.toString());};
